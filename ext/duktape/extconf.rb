@@ -10,5 +10,7 @@ Zlib::GzipReader.open(gzipped_source) do |f|
   end
 end
 
+$CFLAGS += ' -std=c99'
+
 create_makefile 'duktape_ext'
 
