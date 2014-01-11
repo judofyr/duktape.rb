@@ -59,5 +59,40 @@ class TestDuktape < Minitest::Test
 
     assert_includes res, "#{__FILE__}:3"
   end
+
+  ## Current bugs in Duktape
+  if ENV['DUKTAPE_BUGS']
+    def test_tailcall_bug
+      # Tail calls sometimes messes up the parent frame
+      res = @ctx.eval_string <<-EOF, __FILE__
+        var reduce = function(obj, iterator, memo) {
+          return obj.reduce(iterator, memo);
+        };
+
+        function replace(array, shallow) {
+          return reduce(array, function(memo, value) {
+            return memo.concat(shallow);
+          }, []);
+        }
+
+        JSON.stringify(replace([1, 2], 1));
+      EOF
+
+      assert_equal "[1,1]", res
+    end
+
+    def test_bind_constructor
+      # Function.prototype.bind doesn't create constructable functions
+      res = @ctx.eval_string <<-EOF, __FILE__
+        function Thing(value) {
+          this.value = value;
+        }
+
+        one = Thing.bind(null, 1);
+        var obj = new one;
+        print(obj.value);
+      EOF
+    end
+  end
 end
 
