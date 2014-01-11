@@ -16,3 +16,9 @@ task :build => 'ext/duktape/Makefile' do
   end
 end
 
+task :test => :build do
+  ruby 'test/test_duktape.rb'
+end
+
+task :default => :test
+
