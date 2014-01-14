@@ -49,7 +49,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
   return Qnil;
 }
 
-static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
+static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 {
   switch (TYPE(obj)) {
     case T_FIXNUM:
@@ -77,8 +77,12 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       break;
 
     default:
-      rb_raise(eContextError, "unknown object: %+"PRIsVALUE, obj);
+      // Cannot convert
+      return 0;
   }
+
+  // Everything is fine
+  return 1;
 }
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
@@ -143,7 +147,10 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
 
   for (int i = 1; i < argc; i++) {
-    ctx_push_ruby_object(ctx, argv[i]);
+    if (!ctx_push_ruby_object(ctx, argv[i])) {
+      duk_set_top(ctx, 0);
+      rb_raise(eContextError, "unknown object: %+"PRIsVALUE, argv[i]);
+    }
   }
 
   duk_call_prop(ctx, -(argc + 1), (argc - 1));
