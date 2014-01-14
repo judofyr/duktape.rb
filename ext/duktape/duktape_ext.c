@@ -20,7 +20,7 @@ static VALUE ctx_alloc(VALUE klass)
 static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 {
   size_t len;
-  char *buf;
+  const char *buf;
   int type;
   
   type = duk_get_type(ctx, index);
