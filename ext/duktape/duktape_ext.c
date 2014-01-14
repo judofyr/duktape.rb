@@ -124,7 +124,8 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
   if (!duk_get_prop(ctx, -2)) {
     duk_set_top(ctx, 0);
-    rb_raise(eContextError, "no such prop: %"PRIsVALUE, prop);
+    const char *str = StringValueCStr(prop);
+    rb_raise(eContextError, "no such prop: %s", str);
   }
 
   VALUE res = ctx_stack_to_value(ctx, -1);
@@ -149,7 +150,9 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   for (int i = 1; i < argc; i++) {
     if (!ctx_push_ruby_object(ctx, argv[i])) {
       duk_set_top(ctx, 0);
-      rb_raise(eContextError, "unknown object: %+"PRIsVALUE, argv[i]);
+      VALUE tmp = rb_inspect(argv[i]);
+      const char *str = StringValueCStr(tmp);
+      rb_raise(eContextError, "unknown object: %s", str);
     }
   }
 
