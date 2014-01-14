@@ -43,7 +43,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_BUFFER:
     case DUK_TYPE_POINTER:
     default:
-      rb_raise(eContextError, "cannot convert complext object");
+      rb_raise(eContextError, "cannot convert complex object");
   }
 
   return Qnil;
