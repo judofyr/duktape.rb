@@ -58,6 +58,22 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
   return ctx_stack_to_value(ctx, -1);
 }
 
+static VALUE ctx_get_prop(VALUE self, VALUE prop)
+{
+  duk_context *ctx;
+  Data_Get_Struct(self, duk_context, ctx);
+
+  Check_Type(prop, T_STRING);
+
+  duk_push_global_object(ctx);
+  duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
+  if (!duk_get_prop(ctx, -2)) {
+    rb_raise(eContextError, "no such prop");
+  }
+
+  return ctx_stack_to_value(ctx, -1);
+}
+
 static VALUE ctx_wrapped_eval_string(VALUE self, VALUE prop, VALUE source, VALUE filename)
 {
   duk_context *ctx;
@@ -96,6 +112,7 @@ void Init_duktape_ext()
   rb_define_alloc_func(cContext, ctx_alloc);
 
   rb_define_method(cContext, "eval_string", ctx_eval_string, 2);
+  rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "wrapped_eval_string", ctx_wrapped_eval_string, 3);
 }
 

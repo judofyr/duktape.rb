@@ -28,6 +28,11 @@ class TestDuktape < Minitest::Test
     assert_nil @ctx.eval_string('undefined', __FILE__)
   end
 
+  def test_get_prop
+    @ctx.eval_string('a = 1', __FILE__)
+    assert_equal 1.0, @ctx.get_prop('a')
+  end
+
   def test_wrapped
     @ctx.eval_string <<-EOF, __FILE__
       function run(cb) {
