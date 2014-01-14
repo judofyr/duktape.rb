@@ -28,6 +28,12 @@ class TestDuktape < Minitest::Test
     assert_nil @ctx.eval_string('undefined', __FILE__)
   end
 
+  def test_complex_error
+    assert_raises(Duktape::ContextError) do
+      @ctx.eval_string('({a:1})', __FILE__)
+    end
+  end
+
   def test_get_prop
     @ctx.eval_string('a = 1', __FILE__)
     assert_equal 1.0, @ctx.get_prop('a')

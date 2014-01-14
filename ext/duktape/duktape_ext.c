@@ -42,8 +42,11 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_OBJECT:
     case DUK_TYPE_BUFFER:
     case DUK_TYPE_POINTER:
-      return Qnil;
+    default:
+      rb_raise(eContextError, "cannot convert complext object");
   }
+
+  return Qnil;
 }
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
