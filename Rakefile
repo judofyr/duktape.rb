@@ -8,6 +8,9 @@ Rake::ExtensionTask.new do |ext|
   ext.gem_spec = $gemspec
 end
 
+Gem::PackageTask.new($gemspec) do |pkg|
+end
+
 task :test => :compile do
   ruby 'test/test_duktape.rb'
 end
