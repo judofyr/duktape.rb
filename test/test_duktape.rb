@@ -5,7 +5,7 @@ require 'minitest'
 require 'minitest/autorun'
 require 'duktape'
 
-class TestDuktape < Minitest::Test
+class TestDuktape < Minitest::Spec
   def setup
     @ctx = Duktape::Context.new
   end
@@ -37,6 +37,42 @@ class TestDuktape < Minitest::Test
   def test_get_prop
     @ctx.eval_string('a = 1', __FILE__)
     assert_equal 1.0, @ctx.get_prop('a')
+  end
+
+  describe "#call_prop" do
+    before do
+      @ctx.eval_string('function id(a) { return a }', __FILE__)
+    end
+
+    def test_str
+      assert_equal 'Hei', @ctx.call_prop('id', 'Hei')
+    end
+
+    def test_fixnum
+      assert_equal 2.0, @ctx.call_prop('id', 2)
+    end
+
+    def test_float
+      assert_equal 2.0, @ctx.call_prop('id', 2.0)
+    end
+
+    def test_true
+      assert_equal true, @ctx.call_prop('id', true)
+    end
+
+    def test_false
+      assert_equal false, @ctx.call_prop('id', false)
+    end
+
+    def test_nil
+      assert_equal nil, @ctx.call_prop('id', nil)
+    end
+
+    def test_unknown
+      assert_raises(Duktape::ContextError) do
+        @ctx.call_prop('id', Object.new)
+      end
+    end
   end
 
   def test_wrapped

@@ -49,6 +49,38 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
   return Qnil;
 }
 
+static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
+{
+  switch (TYPE(obj)) {
+    case T_FIXNUM:
+      duk_push_int(ctx, NUM2INT(obj));
+      break;
+
+    case T_FLOAT:
+      duk_push_number(ctx, NUM2DBL(obj));
+      break;
+
+    case T_STRING:
+      duk_push_lstring(ctx, RSTRING_PTR(obj), RSTRING_LEN(obj));
+      break;
+
+    case T_TRUE:
+      duk_push_true(ctx);
+      break;
+
+    case T_FALSE:
+      duk_push_false(ctx);
+      break;
+
+    case T_NIL:
+      duk_push_null(ctx);
+      break;
+
+    default:
+      rb_raise(eContextError, "unknown object");
+  }
+}
+
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
 {
   duk_context *ctx;
@@ -74,6 +106,28 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
     rb_raise(eContextError, "no such prop");
   }
 
+  return ctx_stack_to_value(ctx, -1);
+}
+
+static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
+{
+  duk_context *ctx;
+  Data_Get_Struct(self, duk_context, ctx);
+
+  VALUE prop;
+  VALUE *prop_args;
+  rb_scan_args(argc, argv, "1*", &prop, &prop_args);
+
+  Check_Type(prop, T_STRING);
+
+  duk_push_global_object(ctx);
+  duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
+
+  for (int i = 1; i < argc; i++) {
+    ctx_push_ruby_object(ctx, argv[i]);
+  }
+
+  duk_call_prop(ctx, -(argc + 1), (argc - 1));
   return ctx_stack_to_value(ctx, -1);
 }
 
@@ -116,6 +170,7 @@ void Init_duktape_ext()
 
   rb_define_method(cContext, "eval_string", ctx_eval_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
+  rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
   rb_define_method(cContext, "wrapped_eval_string", ctx_wrapped_eval_string, 3);
 }
 
