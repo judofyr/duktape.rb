@@ -39,6 +39,14 @@ class TestDuktape < Minitest::Spec
     assert_equal 1.0, @ctx.get_prop('a')
   end
 
+  def test_get_prop_failed
+    err = assert_raises(Duktape::ContextError) do
+      @ctx.get_prop('a')
+    end
+
+    assert_equal 'no such prop: a', err.message
+  end
+
   describe "#call_prop" do
     before do
       @ctx.eval_string('function id(a) { return a }', __FILE__)
@@ -69,9 +77,10 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_unknown
-      assert_raises(Duktape::ContextError) do
+      err = assert_raises(Duktape::ContextError) do
         @ctx.call_prop('id', Object.new)
       end
+      assert_match /Object/, err.message
     end
   end
 

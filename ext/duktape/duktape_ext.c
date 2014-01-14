@@ -77,7 +77,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       break;
 
     default:
-      rb_raise(eContextError, "unknown object");
+      rb_raise(eContextError, "unknown object: %+"PRIsVALUE, obj);
   }
 }
 
@@ -107,7 +107,7 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
   if (!duk_get_prop(ctx, -2)) {
     duk_set_top(ctx, 0);
-    rb_raise(eContextError, "no such prop");
+    rb_raise(eContextError, "no such prop: %"PRIsVALUE, prop);
   }
 
   VALUE res = ctx_stack_to_value(ctx, -1);
