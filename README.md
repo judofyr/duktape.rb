@@ -23,16 +23,16 @@ p ctx.eval_string('1 + 1', 'hello.js')  # => 2
 
 ## Safely evaluate a string
 ctx.eval_string <<EOF, 'boot.js'
-function runSafely(fn) {
+function runSafely(code) {
   try {
-    fn()
+    eval(code);
   } catch (err) {
     print(err.stack || err);
   }
 }
 EOF
 
-ctx.wrapped_eval_string('runSafely', <<EOF, 'oops.js')
+ctx.call_prop('runSafely', <<EOF)
 function failDeeply() {
   (function() {
     throw new Error("fail");

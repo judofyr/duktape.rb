@@ -75,22 +75,6 @@ class TestDuktape < Minitest::Spec
     end
   end
 
-  def test_wrapped
-    @ctx.eval_string <<-EOF, __FILE__
-      function run(cb) {
-        try {
-          cb();
-          return true;
-        } catch (err) {
-          return err.toString();
-        }
-      }
-    EOF
-
-    assert_equal true, @ctx.wrapped_eval_string('run', '1 == 1', __FILE__)
-    assert_equal '123', @ctx.wrapped_eval_string('run', 'throw 123', __FILE__)
-  end
-
   def test_stacktrace
     res = @ctx.eval_string <<-EOF, __FILE__
       function run() {

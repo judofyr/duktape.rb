@@ -131,30 +131,6 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return ctx_stack_to_value(ctx, -1);
 }
 
-static VALUE ctx_wrapped_eval_string(VALUE self, VALUE prop, VALUE source, VALUE filename)
-{
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
-
-  Check_Type(prop, T_STRING);
-  Check_Type(source, T_STRING);
-  Check_Type(filename, T_STRING);
-
-  duk_push_global_object(ctx);
-  duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
-  if (!duk_get_prop(ctx, -2)) {
-    rb_raise(eContextError, "no such prop");
-  }
-
-  // Compile the source given
-  duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
-  duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
-  duk_compile(ctx, DUK_COMPILE_EVAL);
-
-  duk_call(ctx, 1);
-  return ctx_stack_to_value(ctx, -1);
-}
-
 static void error_handler(duk_context *ctx, int code)
 {
   rb_raise(eContextError, "fatal duktape error");
@@ -171,6 +147,5 @@ void Init_duktape_ext()
   rb_define_method(cContext, "eval_string", ctx_eval_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
-  rb_define_method(cContext, "wrapped_eval_string", ctx_wrapped_eval_string, 3);
 }
 
