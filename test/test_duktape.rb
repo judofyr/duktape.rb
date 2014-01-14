@@ -28,9 +28,22 @@ class TestDuktape < Minitest::Spec
     assert_nil @ctx.eval_string('undefined', __FILE__)
   end
 
+
   def test_complex_error
     assert_raises(Duktape::ContextError) do
-      @ctx.eval_string('({a:1})', __FILE__)
+      @ctx.eval_string('a = {b:1}', __FILE__)
+    end
+  end
+
+  describe "#exec_string" do
+    def test_basic
+      @ctx.exec_string('a = 1', __FILE__)
+      assert_equal 1.0, @ctx.eval_string('a', __FILE__)
+    end
+
+    def test_doesnt_try_convert
+      @ctx.exec_string('a = {b:1}', __FILE__)
+      assert_equal 1.0, @ctx.eval_string('a.b', __FILE__)
     end
   end
 
