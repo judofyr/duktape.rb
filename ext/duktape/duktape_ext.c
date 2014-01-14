@@ -154,7 +154,9 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   }
 
   duk_call_prop(ctx, -(argc + 1), (argc - 1));
-  return ctx_stack_to_value(ctx, -1);
+  VALUE res = ctx_stack_to_value(ctx, -1);
+  duk_set_top(ctx, 0);
+  return res;
 }
 
 static void error_handler(duk_context *ctx, int code)
