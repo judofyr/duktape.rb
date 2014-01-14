@@ -90,7 +90,10 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
   duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
   duk_compile(ctx, DUK_COMPILE_EVAL);
   duk_call(ctx, 0);
-  return ctx_stack_to_value(ctx, -1);
+
+  VALUE res = ctx_stack_to_value(ctx, -1);
+  duk_set_top(ctx, 0);
+  return res;
 }
 
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
@@ -103,10 +106,13 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   duk_push_global_object(ctx);
   duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
   if (!duk_get_prop(ctx, -2)) {
+    duk_set_top(ctx, 0);
     rb_raise(eContextError, "no such prop");
   }
 
-  return ctx_stack_to_value(ctx, -1);
+  VALUE res = ctx_stack_to_value(ctx, -1);
+  duk_set_top(ctx, 0);
+  return res;
 }
 
 static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
@@ -133,6 +139,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 
 static void error_handler(duk_context *ctx, int code)
 {
+  duk_set_top(ctx, 0);
   rb_raise(eContextError, "fatal duktape error");
 }
 
