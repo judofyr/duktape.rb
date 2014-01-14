@@ -1,6 +1,6 @@
-/ext/duktape/Makefile
 /ext/duktape/duktape.c
 *.bundle
 *.gem
 /.bundle
 /Gemfile.lock
+/tmp

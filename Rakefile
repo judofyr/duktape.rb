@@ -1,22 +1,14 @@
-file 'ext/duktape/Makefile' => 'ext/duktape/extconf.rb' do
-  cd 'ext/duktape' do
-    ruby 'extconf.rb'
-  end
+require 'bundler/setup'
+require 'rake/extensiontask'
+
+$gemspec = Gem::Specification.load('duktape.gemspec')
+Rake::ExtensionTask.new do |ext|
+  ext.name = :duktape_ext
+  ext.ext_dir = 'ext/duktape'
+  ext.gem_spec = $gemspec
 end
 
-task :clean => 'ext/duktape/Makefile' do
-  cd 'ext/duktape' do
-    sh 'make clean'
-  end
-end
-
-task :build => 'ext/duktape/Makefile' do
-  cd 'ext/duktape' do
-    sh 'make'
-  end
-end
-
-task :test => :build do
+task :test => :compile do
   ruby 'test/test_duktape.rb'
 end
 
