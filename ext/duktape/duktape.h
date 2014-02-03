@@ -12,8 +12,25 @@ extern "C" {
 #endif
 
 /*
- *  Includes and minimal feature detection required by the public API.
+ *  Feature detection needed by this public header
+ *
+ *  DUK_API_NORETURN: macro for declaring a 'noreturn' function.
+ *  Unfortunately the noreturn declaration may appear in various
+ *  places of a function declaration, so the solution is to wrap
+ *  the entire declaration inside the macro.
+ *
+ *  http://gcc.gnu.org/onlinedocs/gcc-4.3.2//gcc/Function-Attributes.html
+ *  http://clang.llvm.org/docs/LanguageExtensions.html
  */
+
+#if defined(__GNUC__)
+#if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
+/* Convenience, e.g. gcc 4.5.1 == 40501; http://stackoverflow.com/questions/6031819/emulating-gccs-builtin-unreachable */
+#define DUK_API_GCC_VERSION  (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+#else
+#error cannot figure out gcc version
+#endif
+#endif
 
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 #define DUK_API_VARIADIC_MACROS
@@ -21,25 +38,56 @@ extern "C" {
 #undef DUK_API_VARIADIC_MACROS
 #endif
 
-#include <limits.h>  /* INT_MIN */
-#include <stdarg.h>  /* va_list etc */
-#include <stdlib.h>
+#if defined(DUK_API_GCC_VERSION) && (DUK_API_GCC_VERSION >= 20500)
+/* since gcc-2.5 */
+#define DUK_API_NORETURN(decl)  decl __attribute__((noreturn))
+#elif defined(__clang__)
+/* syntax same as gcc */
+#define DUK_API_NORETURN(decl)  decl __attribute__((noreturn))
+#elif defined(_MSC_VER)
+/* http://msdn.microsoft.com/en-us/library/aa235362(VS.60).aspx */
+#define DUK_API_NORETURN(decl)  __declspec(noreturn) decl
+#else
+/* Don't know how to declare a noreturn function, so don't do it; this
+ * may cause some spurious compilation warnings (e.g. "variable used
+ * uninitialized").
+ */
+#define DUK_API_NORETURN(decl)  decl
+#endif
+
+/*
+ *  Includes
+ *
+ *  Keep the set of includes minimal to serve tihs header only to avoid
+ *  portability issues.  For instance, we can't rely on any C99 here.
+ */
+
+#include <limits.h>  /* INT_MIN, INT_MAX */
+#include <stdarg.h>  /* va_list, etc */
+#include <stdlib.h>  /* size_t (defined by stdlib.h and stddef.h) */
 #include <stddef.h>
 
 /*
  *  Typedefs; avoid all dependencies on internal types
  *
  *  (duk_context *) currently maps directly to internal type (duk_hthread *).
+ *  Currently only primitive typedefs have a '_t' suffix.
  */
+
+/* FIXME: proper detection */
+typedef int duk_idx_t;
+typedef int duk_ret_t;
+typedef int duk_bool_t;
+typedef size_t duk_size_t;
 
 struct duk_memory_functions;
 
 typedef void duk_context;
 typedef struct duk_memory_functions duk_memory_functions;
 
-typedef int (*duk_c_function)(duk_context *ctx);
-typedef void *(*duk_alloc_function) (void *udata, size_t size);
-typedef void *(*duk_realloc_function) (void *udata, void *ptr, size_t size);
+typedef duk_ret_t (*duk_c_function)(duk_context *ctx);
+typedef void *(*duk_alloc_function) (void *udata, duk_size_t size);
+typedef void *(*duk_realloc_function) (void *udata, void *ptr, duk_size_t size);
 typedef void (*duk_free_function) (void *udata, void *ptr);
 typedef void (*duk_fatal_function) (duk_context *ctx, int code);
 typedef void (*duk_decode_char_function) (void *udata, int codepoint);
@@ -59,9 +107,9 @@ struct duk_memory_functions {
 
 /* Duktape version, (major * 10000) + (minor * 100) + patch.  Allows C code
  * to #ifdef against Duktape API version.  The same value is also available
- * to Ecmascript code in __duk__.version.
+ * to Ecmascript code in Duktape.version.
  */
-#define DUK_VERSION                       800
+#define DUK_VERSION                       900L
 
 /* Used to represent invalid index; if caller uses this without checking,
  * this index will map to a non-existent stack entry.  Also used in some
@@ -73,6 +121,11 @@ struct duk_memory_functions {
  * and the argument stack should not be capped/extended at all.
  */
 #define DUK_VARARGS                       (-1)
+
+/* Number of value stack entries (in addition to actual call arguments)
+ * guaranteed to be allocated on entry to a Duktape/C function.
+ */
+#define DUK_API_ENTRY_STACK               64
 
 /* Value types, used by e.g. duk_get_type() */
 #define DUK_TYPE_NONE                     0    /* no value, e.g. invalid index */
@@ -152,10 +205,6 @@ struct duk_memory_functions {
 /* Return codes for protected calls (duk_safe_call(), duk_pcall()). */
 #define DUK_EXEC_SUCCESS                  0
 #define DUK_EXEC_ERROR                    1
-/* FIXME: these codes will be refined later (separate code for a fatal API error,
- * distinct from normal error).  These must now match internal DUK_ERR_EXEC_xxx
- * defines.  The internal codes should be removed.
- */
 
 /*
  *  If no variadic macros, __FILE__ and __LINE__ are passed through globals
@@ -186,33 +235,34 @@ void duk_destroy_heap(duk_context *ctx);
  *  Raw functions have no side effects (cannot trigger GC).
  */
 
-void *duk_alloc_raw(duk_context *ctx, size_t size);
+void *duk_alloc_raw(duk_context *ctx, duk_size_t size);
 void duk_free_raw(duk_context *ctx, void *ptr);
-void *duk_realloc_raw(duk_context *ctx, void *ptr, size_t size);
-void *duk_alloc(duk_context *ctx, size_t size);
+void *duk_realloc_raw(duk_context *ctx, void *ptr, duk_size_t size);
+void *duk_alloc(duk_context *ctx, duk_size_t size);
 void duk_free(duk_context *ctx, void *ptr);
-void *duk_realloc(duk_context *ctx, void *ptr, size_t size);
+void *duk_realloc(duk_context *ctx, void *ptr, duk_size_t size);
 void duk_get_memory_functions(duk_context *ctx, duk_memory_functions *out_funcs);
+void duk_gc(duk_context *ctx, int flags);
 
 /*
  *  Error handling
  */
 
-void duk_throw(duk_context *ctx);
+DUK_API_NORETURN(void duk_throw(duk_context *ctx));
 
-void duk_error_raw(duk_context *ctx, int err_code, const char *filename, int line, const char *fmt, ...);
+DUK_API_NORETURN(void duk_error_raw(duk_context *ctx, int err_code, const char *filename, int line, const char *fmt, ...));
 #ifdef DUK_API_VARIADIC_MACROS
 #define duk_error(ctx,err_code,...)  \
 	duk_error_raw((ctx),(err_code),__FILE__,__LINE__,__VA_ARGS__)
 #else
-void duk_error_stash(duk_context *ctx, int err_code, const char *fmt, ...);
+DUK_API_NORETURN(void duk_error_stash(duk_context *ctx, int err_code, const char *fmt, ...));
 #define duk_error  \
 	duk_api_global_filename = __FILE__, \
 	duk_api_global_line = __LINE__, \
 	duk_error_stash  /* arguments follow */
 #endif
 
-void duk_fatal(duk_context *ctx, int err_code);
+DUK_API_NORETURN(void duk_fatal(duk_context *ctx, int err_code));
 
 /*
  *  Other state related functions
@@ -273,7 +323,7 @@ void duk_push_nan(duk_context *ctx);
 void duk_push_int(duk_context *ctx, int val);
 const char *duk_push_string(duk_context *ctx, const char *str);
 const char *duk_push_string_file(duk_context *ctx, const char *path);
-const char *duk_push_lstring(duk_context *ctx, const char *str, size_t len);
+const char *duk_push_lstring(duk_context *ctx, const char *str, duk_size_t len);
 void duk_push_pointer(duk_context *ctx, void *p);
 const char *duk_push_sprintf(duk_context *ctx, const char *fmt, ...);
 const char *duk_push_vsprintf(duk_context *ctx, const char *fmt, va_list ap);
@@ -300,9 +350,9 @@ int duk_push_error_object_stash(duk_context *ctx, int err_code, const char *fmt,
 	duk_push_error_object_stash  /* arguments follow */
 #endif
 
-void *duk_push_buffer(duk_context *ctx, size_t size, int dynamic);
-void *duk_push_fixed_buffer(duk_context *ctx, size_t size);
-void *duk_push_dynamic_buffer(duk_context *ctx, size_t size);
+void *duk_push_buffer(duk_context *ctx, duk_size_t size, int dynamic);
+void *duk_push_fixed_buffer(duk_context *ctx, duk_size_t size);
+void *duk_push_dynamic_buffer(duk_context *ctx, duk_size_t size);
 
 /*
  *  Pop operations
@@ -362,12 +412,12 @@ int duk_get_boolean(duk_context *ctx, int index);
 double duk_get_number(duk_context *ctx, int index);
 int duk_get_int(duk_context *ctx, int index);
 const char *duk_get_string(duk_context *ctx, int index);
-const char *duk_get_lstring(duk_context *ctx, int index, size_t *out_len);
-void *duk_get_buffer(duk_context *ctx, int index, size_t *out_size);
+const char *duk_get_lstring(duk_context *ctx, int index, duk_size_t *out_len);
+void *duk_get_buffer(duk_context *ctx, int index, duk_size_t *out_size);
 void *duk_get_pointer(duk_context *ctx, int index);
 duk_c_function duk_get_c_function(duk_context *ctx, int index);
 duk_context *duk_get_context(duk_context *ctx, int index);
-size_t duk_get_length(duk_context *ctx, int index);
+duk_size_t duk_get_length(duk_context *ctx, int index);
 
 /*
  *  Require operations: no coercion, throw error if index or type
@@ -380,8 +430,8 @@ int duk_require_boolean(duk_context *ctx, int index);
 double duk_require_number(duk_context *ctx, int index);
 int duk_require_int(duk_context *ctx, int index);
 const char *duk_require_string(duk_context *ctx, int index);
-const char *duk_require_lstring(duk_context *ctx, int index, size_t *out_len);
-void *duk_require_buffer(duk_context *ctx, int index, size_t *out_size);
+const char *duk_require_lstring(duk_context *ctx, int index, duk_size_t *out_len);
+void *duk_require_buffer(duk_context *ctx, int index, duk_size_t *out_size);
 void *duk_require_pointer(duk_context *ctx, int index);
 duk_c_function duk_require_c_function(duk_context *ctx, int index);
 duk_context *duk_require_context(duk_context *ctx, int index);
@@ -402,8 +452,8 @@ int duk_to_int32(duk_context *ctx, int index);
 unsigned int duk_to_uint32(duk_context *ctx, int index);
 unsigned int duk_to_uint16(duk_context *ctx, int index);
 const char *duk_to_string(duk_context *ctx, int index);
-const char *duk_to_lstring(duk_context *ctx, int index, size_t *out_len);
-void *duk_to_buffer(duk_context *ctx, int index, size_t *out_size);
+const char *duk_to_lstring(duk_context *ctx, int index, duk_size_t *out_len);
+void *duk_to_buffer(duk_context *ctx, int index, duk_size_t *out_size);
 void *duk_to_pointer(duk_context *ctx, int index);
 void duk_to_object(duk_context *ctx, int index);
 void duk_to_defaultvalue(duk_context *ctx, int index, int hint);
@@ -424,7 +474,7 @@ void duk_json_decode(duk_context *ctx, int index);
  *  Buffer
  */
 
-void *duk_resize_buffer(duk_context *ctx, int index, size_t new_size);
+void *duk_resize_buffer(duk_context *ctx, int index, duk_size_t new_size);
 void duk_to_fixed_buffer(duk_context *ctx, int index);
 
 /*
@@ -455,8 +505,8 @@ int duk_has_prop_index(duk_context *ctx, int obj_index, unsigned int arr_index);
 /* FIXME: incomplete, not usable now */
 void duk_get_var(duk_context *ctx);
 void duk_put_var(duk_context *ctx);
-int duk_del_var(duk_context *ctx);
-int duk_has_var(duk_context *ctx);
+duk_bool_t duk_del_var(duk_context *ctx);
+duk_bool_t duk_has_var(duk_context *ctx);
 
 /*
  *  Object operations
@@ -474,7 +524,7 @@ void duk_concat(duk_context *ctx, unsigned int count);
 void duk_join(duk_context *ctx, unsigned int count);
 void duk_decode_string(duk_context *ctx, int index, duk_decode_char_function callback, void *udata);
 void duk_map_string(duk_context *ctx, int index, duk_map_char_function callback, void *udata);
-void duk_substring(duk_context *ctx, int index, size_t start_offset, size_t end_offset);
+void duk_substring(duk_context *ctx, int index, duk_size_t start_offset, duk_size_t end_offset);
 void duk_trim(duk_context *ctx, int index);
 
 /*

@@ -117,8 +117,8 @@ class TestDuktape < Minitest::Spec
     assert_includes res, "#{__FILE__}:3"
   end
 
-  ## Current bugs in Duktape
-  if ENV['DUKTAPE_BUGS']
+  ## Previous bugs in Duktape
+  describe "previous bugs" do
     def test_tailcall_bug
       # Tail calls sometimes messes up the parent frame
       res = @ctx.eval_string <<-EOF, __FILE__
@@ -147,7 +147,7 @@ class TestDuktape < Minitest::Spec
 
         one = Thing.bind(null, 1);
         var obj = new one;
-        print(obj.value);
+        obj.value;
       EOF
     end
   end
