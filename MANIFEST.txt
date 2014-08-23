@@ -1,4 +1,4 @@
-ext/duktape/duktape.c.gz
+ext/duktape/duktape.c
 ext/duktape/duktape.h
 ext/duktape/duktape_ext.c
 ext/duktape/extconf.rb

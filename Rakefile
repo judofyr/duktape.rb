@@ -8,7 +8,20 @@ Rake::ExtensionTask.new do |ext|
   ext.gem_spec = $gemspec
 end
 
+task :compile => 'ext/duktape/duktape.c'
+
 Gem::PackageTask.new($gemspec) do |pkg|
+end
+
+DUKTAPE_VERSION = Duktape::VERSION.split('.')[0,3].join('.')
+file 'ext/duktape/duktape.c' do
+  url = "http://duktape.org/duktape-#{DUKTAPE_VERSION}.tar.xz"
+  mkdir_p "tmp"
+  chdir "tmp" do
+    sh "curl", "-O", url
+    sh "tar", "xf", "duktape-#{DUKTAPE_VERSION}.tar.xz"
+    cp FileList["duktape-#{DUKTAPE_VERSION}/src/*"], '../ext/duktape'
+  end
 end
 
 task :test => :compile do
