@@ -101,7 +101,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_unknown_argument_type
-      err = assert_raises(ArgumentError) do
+      err = assert_raises(TypeError) do
         @ctx.call_prop('id', Object.new)
       end
       assert_match /Object/, err.message

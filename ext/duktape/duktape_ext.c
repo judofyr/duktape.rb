@@ -170,7 +170,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
       duk_set_top(ctx, 0);
       VALUE tmp = rb_inspect(argv[i]);
       const char *str = StringValueCStr(tmp);
-      rb_raise(rb_eArgError, "unknown object: %s", str);
+      rb_raise(rb_eTypeError, "unknown object: %s", str);
     }
   }
 
