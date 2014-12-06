@@ -4,6 +4,7 @@ $LOAD_PATH << (root + '/lib') << (root + '/ext/duktape')
 require 'minitest'
 require 'minitest/autorun'
 require 'duktape'
+require 'open-uri'
 
 class TestDuktape < Minitest::Spec
   def setup
@@ -150,6 +151,11 @@ class TestDuktape < Minitest::Spec
         obj.value;
       EOF
     end
+
+    def test_coffeescript
+      source = open("http://coffeescript.org/extras/coffee-script.js").read
+      @ctx.eval_string(source, "coffee-script.js")
+      @ctx.eval_string("CoffeeScript.compile('square = (x) -> x * x')")
+    end
   end
 end
-

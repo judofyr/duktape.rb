@@ -4,7 +4,7 @@
 static VALUE mDuktape;
 static VALUE cContext;
 static VALUE eContextError;
-static void error_handler(duk_context *, int);
+static void error_handler(duk_context *, int, const char *);
 
 static void ctx_dealloc(void *ctx)
 {
@@ -22,7 +22,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
   size_t len;
   const char *buf;
   int type;
-  
+
   type = duk_get_type(ctx, index);
   switch (type) {
     case DUK_TYPE_NULL:
@@ -162,7 +162,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return res;
 }
 
-static void error_handler(duk_context *ctx, int code)
+static void error_handler(duk_context *ctx, int code, const char *msg)
 {
   duk_set_top(ctx, 0);
   rb_raise(eContextError, "fatal duktape error: %d", code);
@@ -181,4 +181,3 @@ void Init_duktape_ext()
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
 }
-
