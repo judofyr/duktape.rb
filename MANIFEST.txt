@@ -1,3 +1,5 @@
+README.md
+CHANGELOG.md
 ext/duktape/duktape.c
 ext/duktape/duktape.h
 ext/duktape/duktape_ext.c
