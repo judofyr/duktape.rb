@@ -165,7 +165,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 static void error_handler(duk_context *ctx, int code, const char *msg)
 {
   duk_set_top(ctx, 0);
-  rb_raise(eContextError, "fatal duktape error: %d", code);
+  rb_raise(eContextError, "fatal duktape error: %s (%d)", msg, code);
 }
 
 void Init_duktape_ext()

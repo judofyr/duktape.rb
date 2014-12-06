@@ -35,6 +35,13 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('a = {b:1}', __FILE__)
       end
     end
+
+    def test_error_message
+      ex = assert_raises(Duktape::ContextError) do
+        @ctx.eval_string('fail', __FILE__)
+      end
+      assert_includes ex.message, 'uncaught error'
+    end
   end
 
   describe "#exec_string" do
