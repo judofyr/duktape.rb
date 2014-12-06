@@ -34,11 +34,22 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('a = function() {}', __FILE__)
     end
 
-    def test_error_message
-      ex = assert_raises(Duktape::UncaughtError) do
+    def test_reference_error
+      assert_raises(Duktape::ReferenceError) do
         @ctx.eval_string('fail', __FILE__)
       end
-      assert_includes ex.message, 'uncaught error'
+    end
+
+    def test_syntax_error
+      assert_raises(Duktape::SyntaxError) do
+        @ctx.eval_string('{', __FILE__)
+      end
+    end
+
+    def test_type_error
+      assert_raises(Duktape::TypeError) do
+        @ctx.eval_string('null.fail', __FILE__)
+      end
     end
   end
 
