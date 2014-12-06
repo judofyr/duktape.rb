@@ -29,11 +29,9 @@ class TestDuktape < Minitest::Spec
       assert_nil @ctx.eval_string('undefined', __FILE__)
     end
 
-
-    def test_complex_error
-      assert_raises(Duktape::ContextError) do
-        @ctx.eval_string('a = {b:1}', __FILE__)
-      end
+    def test_complex_object
+      assert_equal Duktape::ComplexObject.instance,
+        @ctx.eval_string('a = function() {}', __FILE__)
     end
 
     def test_error_message

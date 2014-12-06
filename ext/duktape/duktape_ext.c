@@ -3,6 +3,8 @@
 
 static VALUE mDuktape;
 static VALUE cContext;
+static VALUE cComplexObject;
+static VALUE oComplexObject;
 
 static VALUE eContextError;
 
@@ -61,7 +63,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_BUFFER:
     case DUK_TYPE_POINTER:
     default:
-      rb_raise(eContextError, "cannot convert complex object");
+      return oComplexObject;
   }
 
   return Qnil;
@@ -220,10 +222,16 @@ static void error_handler(duk_context *ctx, int code, const char *msg)
   }
 }
 
+VALUE complex_object_instance(VALUE self)
+{
+  return oComplexObject;
+}
+
 void Init_duktape_ext()
 {
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
+  cComplexObject = rb_define_class_under(mDuktape, "ComplexObject", rb_cObject);
   eContextError = rb_define_class_under(mDuktape, "ContextError", rb_eStandardError);
 
   eUnimplementedError = rb_define_class_under(mDuktape, "UnimplementedError", eContextError);
@@ -248,4 +256,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "exec_string", ctx_exec_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
+
+  oComplexObject = rb_obj_alloc(cComplexObject);
+  rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
 }
