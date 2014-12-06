@@ -3,7 +3,25 @@
 
 static VALUE mDuktape;
 static VALUE cContext;
+
 static VALUE eContextError;
+
+static VALUE eUnimplementedError;
+static VALUE eUnsupportedError;
+static VALUE eInternalError;
+static VALUE eAllocError;
+static VALUE eAssertionError;
+static VALUE eAPIError;
+static VALUE eUncaughtError;
+
+static VALUE eError;
+static VALUE eEvalError;
+static VALUE eRangeError;
+static VALUE eReferenceError;
+static VALUE eSyntaxError;
+static VALUE eTypeError;
+static VALUE eURIError;
+
 static void error_handler(duk_context *, int, const char *);
 
 static void ctx_dealloc(void *ctx)
@@ -125,7 +143,7 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   if (!duk_get_prop(ctx, -2)) {
     duk_set_top(ctx, 0);
     const char *str = StringValueCStr(prop);
-    rb_raise(eContextError, "no such prop: %s", str);
+    rb_raise(eReferenceError, "no such prop: %s", str);
   }
 
   VALUE res = ctx_stack_to_value(ctx, -1);
@@ -165,7 +183,41 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 static void error_handler(duk_context *ctx, int code, const char *msg)
 {
   duk_set_top(ctx, 0);
-  rb_raise(eContextError, "fatal duktape error: %s (%d)", msg, code);
+
+  switch (code) {
+    case DUK_ERR_UNIMPLEMENTED_ERROR:
+      return rb_raise(eUnimplementedError, "%s", msg);
+    case DUK_ERR_UNSUPPORTED_ERROR:
+      return rb_raise(eUnsupportedError, "%s", msg);
+    case DUK_ERR_INTERNAL_ERROR:
+      return rb_raise(eInternalError, "%s", msg);
+    case DUK_ERR_ALLOC_ERROR:
+      return rb_raise(eAllocError, "%s", msg);
+    case DUK_ERR_ASSERTION_ERROR:
+      return rb_raise(eAssertionError, "%s", msg);
+    case DUK_ERR_API_ERROR:
+      return rb_raise(eAPIError, "%s", msg);
+    case DUK_ERR_UNCAUGHT_ERROR:
+      return rb_raise(eUncaughtError, "%s", msg);
+
+    case DUK_ERR_ERROR:
+      return rb_raise(eError, "%s", msg);
+    case DUK_ERR_EVAL_ERROR:
+      return rb_raise(eEvalError, "%s", msg);
+    case DUK_ERR_RANGE_ERROR:
+      return rb_raise(eRangeError, "%s", msg);
+    case DUK_ERR_REFERENCE_ERROR:
+      return rb_raise(eReferenceError, "%s", msg);
+    case DUK_ERR_SYNTAX_ERROR:
+      return rb_raise(eSyntaxError, "%s", msg);
+    case DUK_ERR_TYPE_ERROR:
+      return rb_raise(eTypeError, "%s", msg);
+    case DUK_ERR_URI_ERROR:
+      return rb_raise(eURIError, "%s", msg);
+
+    default:
+      return rb_raise(eContextError, "fatal duktape error: %s (%d)", msg, code);
+  }
 }
 
 void Init_duktape_ext()
@@ -173,6 +225,22 @@ void Init_duktape_ext()
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
   eContextError = rb_define_class_under(mDuktape, "ContextError", rb_eStandardError);
+
+  eUnimplementedError = rb_define_class_under(mDuktape, "UnimplementedError", eContextError);
+  eUnsupportedError = rb_define_class_under(mDuktape, "UnsupportedError", eContextError);
+  eInternalError = rb_define_class_under(mDuktape, "InternalError", eContextError);
+  eAllocError = rb_define_class_under(mDuktape, "AllocError", eContextError);
+  eAssertionError = rb_define_class_under(mDuktape, "AssertionError", eContextError);
+  eAPIError = rb_define_class_under(mDuktape, "APIError", eContextError);
+  eUncaughtError = rb_define_class_under(mDuktape, "UncaughtError", eContextError);
+
+  eError = rb_define_class_under(mDuktape, "Error", eContextError);
+  eEvalError = rb_define_class_under(mDuktape, "EvalError", eContextError);
+  eRangeError = rb_define_class_under(mDuktape, "RangeError", eContextError);
+  eReferenceError = rb_define_class_under(mDuktape, "ReferenceError", eContextError);
+  eSyntaxError = rb_define_class_under(mDuktape, "SyntaxError", eContextError);
+  eTypeError = rb_define_class_under(mDuktape, "TypeError", eContextError);
+  eURIError = rb_define_class_under(mDuktape, "URIError", eContextError);
 
   rb_define_alloc_func(cContext, ctx_alloc);
 

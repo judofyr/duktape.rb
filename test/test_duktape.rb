@@ -37,7 +37,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_error_message
-      ex = assert_raises(Duktape::ContextError) do
+      ex = assert_raises(Duktape::UncaughtError) do
         @ctx.eval_string('fail', __FILE__)
       end
       assert_includes ex.message, 'uncaught error'
@@ -63,7 +63,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_missing
-      err = assert_raises(Duktape::ContextError) do
+      err = assert_raises(Duktape::ReferenceError) do
         @ctx.get_prop('a')
       end
 
@@ -159,4 +159,3 @@ class TestDuktape < Minitest::Spec
     end
   end
 end
-
