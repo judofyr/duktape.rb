@@ -1,4 +1,3 @@
 module Duktape
-  VERSION = "0.11.0.0"
+  VERSION = "1.0.2.0"
 end
-
