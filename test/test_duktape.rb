@@ -100,8 +100,8 @@ class TestDuktape < Minitest::Spec
       assert_equal nil, @ctx.call_prop('id', nil)
     end
 
-    def test_unknown
-      err = assert_raises(Duktape::ContextError) do
+    def test_unknown_argument_type
+      err = assert_raises(ArgumentError) do
         @ctx.call_prop('id', Object.new)
       end
       assert_match /Object/, err.message
