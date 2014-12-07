@@ -6,8 +6,6 @@ static VALUE cContext;
 static VALUE cComplexObject;
 static VALUE oComplexObject;
 
-static VALUE eContextError;
-
 static VALUE eUnimplementedError;
 static VALUE eUnsupportedError;
 static VALUE eInternalError;
@@ -70,15 +68,13 @@ static VALUE error_code_class(int code) {
       return eURIError;
 
     default:
-      return eContextError;
+      return eInternalError;
   }
 }
 
 static VALUE error_name_class(const char* name)
 {
-  if (strcmp(name, "Error") == 0) {
-    return eError;
-  } else if (strcmp(name, "EvalError") == 0) {
+  if (strcmp(name, "EvalError") == 0) {
     return eEvalError;
   } else if (strcmp(name, "RangeError") == 0) {
     return eRangeError;
@@ -91,7 +87,7 @@ static VALUE error_name_class(const char* name)
   } else if (strcmp(name, "URIError") == 0) {
     return eURIError;
   } else {
-    return eContextError;
+    return eError;
   }
 }
 
@@ -282,17 +278,16 @@ void Init_duktape_ext()
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
   cComplexObject = rb_define_class_under(mDuktape, "ComplexObject", rb_cObject);
-  eContextError = rb_define_class_under(mDuktape, "ContextError", rb_eStandardError);
 
-  eUnimplementedError = rb_define_class_under(mDuktape, "UnimplementedError", eContextError);
-  eUnsupportedError = rb_define_class_under(mDuktape, "UnsupportedError", eContextError);
-  eInternalError = rb_define_class_under(mDuktape, "InternalError", eContextError);
-  eAllocError = rb_define_class_under(mDuktape, "AllocError", eContextError);
-  eAssertionError = rb_define_class_under(mDuktape, "AssertionError", eContextError);
-  eAPIError = rb_define_class_under(mDuktape, "APIError", eContextError);
-  eUncaughtError = rb_define_class_under(mDuktape, "UncaughtError", eContextError);
+  eInternalError = rb_define_class_under(mDuktape, "InternalError", rb_eStandardError);
+  eUnimplementedError = rb_define_class_under(mDuktape, "UnimplementedError", eInternalError);
+  eUnsupportedError = rb_define_class_under(mDuktape, "UnsupportedError", eInternalError);
+  eAllocError = rb_define_class_under(mDuktape, "AllocError", eInternalError);
+  eAssertionError = rb_define_class_under(mDuktape, "AssertionError", eInternalError);
+  eAPIError = rb_define_class_under(mDuktape, "APIError", eInternalError);
+  eUncaughtError = rb_define_class_under(mDuktape, "UncaughtError", eInternalError);
 
-  eError = rb_define_class_under(mDuktape, "Error", eContextError);
+  eError = rb_define_class_under(mDuktape, "Error", rb_eStandardError);
   eEvalError = rb_define_class_under(mDuktape, "EvalError", eError);
   eRangeError = rb_define_class_under(mDuktape, "RangeError", eError);
   eReferenceError = rb_define_class_under(mDuktape, "ReferenceError", eError);
