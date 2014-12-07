@@ -293,12 +293,12 @@ void Init_duktape_ext()
   eUncaughtError = rb_define_class_under(mDuktape, "UncaughtError", eContextError);
 
   eError = rb_define_class_under(mDuktape, "Error", eContextError);
-  eEvalError = rb_define_class_under(mDuktape, "EvalError", eContextError);
-  eRangeError = rb_define_class_under(mDuktape, "RangeError", eContextError);
-  eReferenceError = rb_define_class_under(mDuktape, "ReferenceError", eContextError);
-  eSyntaxError = rb_define_class_under(mDuktape, "SyntaxError", eContextError);
-  eTypeError = rb_define_class_under(mDuktape, "TypeError", eContextError);
-  eURIError = rb_define_class_under(mDuktape, "URIError", eContextError);
+  eEvalError = rb_define_class_under(mDuktape, "EvalError", eError);
+  eRangeError = rb_define_class_under(mDuktape, "RangeError", eError);
+  eReferenceError = rb_define_class_under(mDuktape, "ReferenceError", eError);
+  eSyntaxError = rb_define_class_under(mDuktape, "SyntaxError", eError);
+  eTypeError = rb_define_class_under(mDuktape, "TypeError", eError);
+  eURIError = rb_define_class_under(mDuktape, "URIError", eError);
 
   rb_define_alloc_func(cContext, ctx_alloc);
 
