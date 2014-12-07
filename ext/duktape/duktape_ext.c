@@ -37,6 +37,64 @@ static VALUE ctx_alloc(VALUE klass)
   return Data_Wrap_Struct(klass, NULL, ctx_dealloc, ctx);
 }
 
+static VALUE error_code_class(int code) {
+  switch (code) {
+    case DUK_ERR_UNIMPLEMENTED_ERROR:
+      return eUnimplementedError;
+    case DUK_ERR_UNSUPPORTED_ERROR:
+      return eUnsupportedError;
+    case DUK_ERR_INTERNAL_ERROR:
+      return eInternalError;
+    case DUK_ERR_ALLOC_ERROR:
+      return eAllocError;
+    case DUK_ERR_ASSERTION_ERROR:
+      return eAssertionError;
+    case DUK_ERR_API_ERROR:
+      return eAPIError;
+    case DUK_ERR_UNCAUGHT_ERROR:
+      return eUncaughtError;
+
+    case DUK_ERR_ERROR:
+      return eError;
+    case DUK_ERR_EVAL_ERROR:
+      return eEvalError;
+    case DUK_ERR_RANGE_ERROR:
+      return eRangeError;
+    case DUK_ERR_REFERENCE_ERROR:
+      return eReferenceError;
+    case DUK_ERR_SYNTAX_ERROR:
+      return eSyntaxError;
+    case DUK_ERR_TYPE_ERROR:
+      return eTypeError;
+    case DUK_ERR_URI_ERROR:
+      return eURIError;
+
+    default:
+      return eContextError;
+  }
+}
+
+static VALUE error_name_class(const char* name)
+{
+  if (strcmp(name, "Error") == 0) {
+    return eError;
+  } else if (strcmp(name, "EvalError") == 0) {
+    return eEvalError;
+  } else if (strcmp(name, "RangeError") == 0) {
+    return eRangeError;
+  } else if (strcmp(name, "ReferenceError") == 0) {
+    return eReferenceError;
+  } else if (strcmp(name, "SyntaxError") == 0) {
+    return eSyntaxError;
+  } else if (strcmp(name, "TypeError") == 0) {
+    return eTypeError;
+  } else if (strcmp(name, "URIError") == 0) {
+    return eURIError;
+  } else {
+    return eContextError;
+  }
+}
+
 static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 {
   size_t len;
@@ -105,6 +163,19 @@ static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
   return 1;
 }
 
+static void raise_ctx_error(duk_context *ctx)
+{
+  duk_get_prop_string(ctx, -1, "name");
+  const char *name = duk_safe_to_string(ctx, -1);
+  duk_pop(ctx);
+
+  duk_get_prop_string(ctx, -1, "message");
+  const char *message = duk_to_string(ctx, -1);
+  duk_pop(ctx);
+
+  rb_raise(error_name_class(name), "%s", message);
+}
+
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
 {
   duk_context *ctx;
@@ -112,8 +183,14 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
 
   duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
   duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
-  duk_compile(ctx, DUK_COMPILE_EVAL);
-  duk_call(ctx, 0);
+
+  if (duk_pcompile(ctx, DUK_COMPILE_EVAL) == DUK_EXEC_ERROR) {
+    raise_ctx_error(ctx);
+  }
+
+  if (duk_pcall(ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(ctx);
+  }
 
   VALUE res = ctx_stack_to_value(ctx, -1);
   duk_set_top(ctx, 0);
@@ -185,41 +262,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 static void error_handler(duk_context *ctx, int code, const char *msg)
 {
   duk_set_top(ctx, 0);
-
-  switch (code) {
-    case DUK_ERR_UNIMPLEMENTED_ERROR:
-      return rb_raise(eUnimplementedError, "%s", msg);
-    case DUK_ERR_UNSUPPORTED_ERROR:
-      return rb_raise(eUnsupportedError, "%s", msg);
-    case DUK_ERR_INTERNAL_ERROR:
-      return rb_raise(eInternalError, "%s", msg);
-    case DUK_ERR_ALLOC_ERROR:
-      return rb_raise(eAllocError, "%s", msg);
-    case DUK_ERR_ASSERTION_ERROR:
-      return rb_raise(eAssertionError, "%s", msg);
-    case DUK_ERR_API_ERROR:
-      return rb_raise(eAPIError, "%s", msg);
-    case DUK_ERR_UNCAUGHT_ERROR:
-      return rb_raise(eUncaughtError, "%s", msg);
-
-    case DUK_ERR_ERROR:
-      return rb_raise(eError, "%s", msg);
-    case DUK_ERR_EVAL_ERROR:
-      return rb_raise(eEvalError, "%s", msg);
-    case DUK_ERR_RANGE_ERROR:
-      return rb_raise(eRangeError, "%s", msg);
-    case DUK_ERR_REFERENCE_ERROR:
-      return rb_raise(eReferenceError, "%s", msg);
-    case DUK_ERR_SYNTAX_ERROR:
-      return rb_raise(eSyntaxError, "%s", msg);
-    case DUK_ERR_TYPE_ERROR:
-      return rb_raise(eTypeError, "%s", msg);
-    case DUK_ERR_URI_ERROR:
-      return rb_raise(eURIError, "%s", msg);
-
-    default:
-      return rb_raise(eContextError, "fatal duktape error: %s (%d)", msg, code);
-  }
+  return rb_raise(error_code_class(code), "%s", msg);
 }
 
 VALUE complex_object_instance(VALUE self)
