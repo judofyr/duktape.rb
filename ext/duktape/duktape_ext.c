@@ -259,4 +259,5 @@ void Init_duktape_ext()
 
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
+  rb_ivar_set(cComplexObject, rb_intern("duktape.instance"), oComplexObject);
 }

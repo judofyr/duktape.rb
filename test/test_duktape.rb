@@ -117,6 +117,16 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "ComplexObject instance" do
+    def test_survives_bad_people
+      Duktape::ComplexObject.instance_variable_set(:@instance, nil)
+      # Generate some garbage
+      100.times { Array.new(1000) { " " * 100 } }
+      GC.start
+      assert Duktape::ComplexObject.instance
+    end
+  end
+
   def test_stacktrace
     res = @ctx.eval_string <<-EOF, __FILE__
       function run() {
