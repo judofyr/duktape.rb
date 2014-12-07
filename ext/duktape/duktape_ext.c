@@ -204,8 +204,15 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
 
   duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
   duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
-  duk_compile(ctx, 0);
-  duk_call(ctx, 0);
+
+  if (duk_pcompile(ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(ctx);
+  }
+
+  if (duk_pcall(ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(ctx);
+  }
+
   duk_set_top(ctx, 0);
   return Qnil;
 }

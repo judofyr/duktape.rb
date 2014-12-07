@@ -63,6 +63,24 @@ class TestDuktape < Minitest::Spec
       @ctx.exec_string('a = {b:1}', __FILE__)
       assert_equal 1.0, @ctx.eval_string('a.b', __FILE__)
     end
+
+    def test_reference_error
+      assert_raises(Duktape::ReferenceError) do
+        @ctx.exec_string('fail', __FILE__)
+      end
+    end
+
+    def test_syntax_error
+      assert_raises(Duktape::SyntaxError) do
+        @ctx.exec_string('{', __FILE__)
+      end
+    end
+
+    def test_type_error
+      assert_raises(Duktape::TypeError) do
+        @ctx.exec_string('null.fail', __FILE__)
+      end
+    end
   end
 
   describe "#get_prop" do
