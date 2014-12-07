@@ -1,5 +1,10 @@
 # ChangeLog
 
+## v1.0.2.1 (Not released yet)
+
+* Add error subclasses for the various Duktape errors
+* Return instance of ComplexObject for complex objects
+
 ## v1.0.2.0 (2014-12-06)
 
 * Upgraded Duktape to version 2.0.1
