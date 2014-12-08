@@ -29,6 +29,12 @@ class TestDuktape < Minitest::Spec
       assert_nil @ctx.eval_string('undefined', __FILE__)
     end
 
+    def test_array
+      assert_equal [1, 2, 3], @ctx.eval_string('[1, 2, 3]', __FILE__)
+      assert_equal [1, [2, 3]], @ctx.eval_string('[1, [2, 3]]', __FILE__)
+      assert_equal [1, [2, [3]]], @ctx.eval_string('[1, [2, [3]]]', __FILE__)
+    end
+
     def test_complex_object
       assert_equal Duktape::ComplexObject.instance,
         @ctx.eval_string('a = function() {}', __FILE__)
