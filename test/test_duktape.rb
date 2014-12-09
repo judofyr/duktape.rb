@@ -61,6 +61,11 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('a = function() {}', __FILE__)
     end
 
+    def test_skip_complex_object
+      assert_equal nil,
+        @ctx.eval_string('a = function() {}', __FILE__, skip_complex: true)
+    end
+
     def test_reference_error
       assert_raises(Duktape::ReferenceError) do
         @ctx.eval_string('fail', __FILE__)
