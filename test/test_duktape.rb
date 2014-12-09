@@ -140,6 +140,18 @@ class TestDuktape < Minitest::Spec
         @ctx.call_prop('id', Object.new)
       end
       assert_match /Object/, err.message
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', [Object.new])
+      end
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', {123 => Object.new})
+      end
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', {'key' => Object.new})
+      end
     end
   end
 

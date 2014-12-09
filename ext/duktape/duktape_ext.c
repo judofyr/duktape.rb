@@ -101,34 +101,34 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
   return Qnil;
 }
 
-static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
+static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 {
   duk_idx_t arr_idx;
 
   switch (TYPE(obj)) {
     case T_FIXNUM:
       duk_push_int(ctx, NUM2INT(obj));
-      break;
+      return;
 
     case T_FLOAT:
       duk_push_number(ctx, NUM2DBL(obj));
-      break;
+      return;
 
     case T_STRING:
       duk_push_lstring(ctx, RSTRING_PTR(obj), RSTRING_LEN(obj));
-      break;
+      return;
 
     case T_TRUE:
       duk_push_true(ctx);
-      break;
+      return;
 
     case T_FALSE:
       duk_push_false(ctx);
-      break;
+      return;
 
     case T_NIL:
       duk_push_null(ctx);
-      break;
+      return;
 
     case T_ARRAY:
       arr_idx = duk_push_array(ctx);
@@ -136,27 +136,43 @@ static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
         ctx_push_ruby_object(ctx, rb_ary_entry(obj, idx));
         duk_put_prop_index(ctx, arr_idx, idx);
       }
-      break;
+      return;
 
     case T_HASH:
       duk_push_object(ctx);
       rb_hash_foreach(obj, ctx_push_hash_element, (VALUE)ctx);
-      break;
+      return;
 
     default:
       // Cannot convert
-      return 0;
+      break;
   }
 
-  // Everything is fine
-  return 1;
+  rb_raise(rb_eTypeError, "cannot convert %s", rb_obj_classname(obj));
+}
+
+struct ARGS
+{
+  duk_context *ctx;
+  int argc;
+  VALUE *argv;
+};
+
+static VALUE ctx_push_args(VALUE vargs)
+{
+  struct ARGS *args = (struct ARGS*)vargs;
+  for (int i = 0; i < args->argc; i++) {
+    ctx_push_ruby_object(args->ctx, args->argv[i]);
+  }
+  return Qnil;
 }
 
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra)
 {
   duk_context *ctx = (duk_context*) extra;
 
-  ctx_push_ruby_object(ctx, key);
+  Check_Type(key, T_STRING);
+  duk_push_lstring(ctx, RSTRING_PTR(key), RSTRING_LEN(key));
   ctx_push_ruby_object(ctx, val);
   duk_put_prop(ctx, -3);
   return ST_CONTINUE;
@@ -231,13 +247,19 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   duk_push_global_object(ctx);
   duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
 
-  for (int i = 1; i < argc; i++) {
-    if (!ctx_push_ruby_object(ctx, argv[i])) {
-      duk_set_top(ctx, 0);
-      VALUE tmp = rb_inspect(argv[i]);
-      const char *str = StringValueCStr(tmp);
-      rb_raise(rb_eTypeError, "unknown object: %s", str);
-    }
+  struct ARGS args;
+  args.ctx = ctx;
+  args.argc = argc - 1;
+  args.argv = argv + 1;
+  int state = 0;
+
+  rb_protect(ctx_push_args, (VALUE)&args, &state);
+
+  if (state) {
+    // Exception happened when handling arguments
+    // Reset stack to ensure we don't leak any data
+    duk_set_top(ctx, 0);
+    rb_jump_tag(state);
   }
 
   duk_call_prop(ctx, -(argc + 1), (argc - 1));
