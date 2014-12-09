@@ -25,6 +25,7 @@ static VALUE eTypeError;
 static VALUE eURIError;
 
 static void error_handler(duk_context *, int, const char *);
+static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
 static void ctx_dealloc(void *ctx)
 {
@@ -130,6 +131,11 @@ static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       }
       break;
 
+    case T_HASH:
+      duk_push_object(ctx);
+      rb_hash_foreach(obj, ctx_push_hash_element, (VALUE)ctx);
+      break;
+
     default:
       // Cannot convert
       return 0;
@@ -138,6 +144,17 @@ static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
   // Everything is fine
   return 1;
 }
+
+static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra)
+{
+  duk_context *ctx = (duk_context*) extra;
+
+  ctx_push_ruby_object(ctx, key);
+  ctx_push_ruby_object(ctx, val);
+  duk_put_prop(ctx, -3);
+  return ST_CONTINUE;
+}
+
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
 {

@@ -115,6 +115,11 @@ class TestDuktape < Minitest::Spec
       assert_equal [['foo', [1.0]]], @ctx.call_prop('id', [['foo', [1]]])
     end
 
+    def test_hashes
+      assert_equal({'hello' => 123}, @ctx.call_prop('id', {'hello' => 123}))
+      assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
+    end
+
     def test_unknown_argument_type
       err = assert_raises(TypeError) do
         @ctx.call_prop('id', Object.new)
