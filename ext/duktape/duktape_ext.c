@@ -35,6 +35,13 @@ static void ctx_dealloc(void *ctx)
 static VALUE ctx_alloc(VALUE klass)
 {
   duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, error_handler);
+
+  // Undefine require property
+  duk_push_global_object(ctx);
+  duk_push_string(ctx, "require");
+  duk_del_prop(ctx, -2);
+  duk_set_top(ctx, 0);
+
   return Data_Wrap_Struct(klass, NULL, ctx_dealloc, ctx);
 }
 

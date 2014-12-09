@@ -154,6 +154,23 @@ class TestDuktape < Minitest::Spec
     assert_includes res, "#{__FILE__}:3"
   end
 
+  describe "modules" do
+    def test_required_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof require', __FILE__)
+    end
+
+    def test_module_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof module', __FILE__)
+    end
+
+    def test_exports_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof exports', __FILE__)
+    end
+  end
+
   ## Previous bugs in Duktape
   describe "previous bugs" do
     def test_tailcall_bug
