@@ -4,6 +4,8 @@
 
 * Add error subclasses for the various Duktape errors
 * Return instance of ComplexObject for complex objects
+* Arrays and objects can now be returned from JavaScript context
+* Arrays and hashes can now be passes into JavaScript context
 
 ## v1.0.2.0 (2014-12-06)
 

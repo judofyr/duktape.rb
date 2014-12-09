@@ -11,6 +11,21 @@ class TestDuktape < Minitest::Spec
   end
 
   describe "#eval_string" do
+    def test_requires_string
+      assert_raises(TypeError) do
+        @ctx.eval_string(123, __FILE__)
+      end
+    end
+
+    def test_works_with_to_str
+      a = Object.new
+      def a.to_str
+        '"123"'
+      end
+
+      assert_equal '123', @ctx.eval_string(a, __FILE__)
+    end
+
     def test_string
       assert_equal '123', @ctx.eval_string('"123"', __FILE__)
     end
@@ -27,6 +42,18 @@ class TestDuktape < Minitest::Spec
     def test_nil_undef
       assert_nil @ctx.eval_string('null', __FILE__)
       assert_nil @ctx.eval_string('undefined', __FILE__)
+    end
+
+    def test_array
+      assert_equal [1, 2, 3], @ctx.eval_string('[1, 2, 3]', __FILE__)
+      assert_equal [1, [2, 3]], @ctx.eval_string('[1, [2, 3]]', __FILE__)
+      assert_equal [1, [2, [3]]], @ctx.eval_string('[1, [2, [3]]]', __FILE__)
+    end
+
+    def test_object
+      assert_equal({ "a" => 1, "b" => 2 }, @ctx.eval_string('({a: 1, b: 2})', __FILE__))
+      assert_equal({ "a" => 1, "b" => [2] }, @ctx.eval_string('({a: 1, b: [2]})', __FILE__))
+      assert_equal({ "a" => 1, "b" => { "c" => 2 } }, @ctx.eval_string('({a: 1, b: {c: 2}})', __FILE__))
     end
 
     def test_complex_object
@@ -127,11 +154,33 @@ class TestDuktape < Minitest::Spec
       assert_equal nil, @ctx.call_prop('id', nil)
     end
 
+    def test_arrays
+      assert_equal [1.0], @ctx.call_prop('id', [1])
+      assert_equal [['foo', [1.0]]], @ctx.call_prop('id', [['foo', [1]]])
+    end
+
+    def test_hashes
+      assert_equal({'hello' => 123}, @ctx.call_prop('id', {'hello' => 123}))
+      assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
+    end
+
     def test_unknown_argument_type
       err = assert_raises(TypeError) do
         @ctx.call_prop('id', Object.new)
       end
       assert_match /Object/, err.message
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', [Object.new])
+      end
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', {123 => Object.new})
+      end
+
+      assert_raises(TypeError) do
+        @ctx.call_prop('id', {'key' => Object.new})
+      end
     end
   end
 
@@ -159,6 +208,23 @@ class TestDuktape < Minitest::Spec
     EOF
 
     assert_includes res, "#{__FILE__}:3"
+  end
+
+  describe "modules" do
+    def test_required_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof require', __FILE__)
+    end
+
+    def test_module_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof module', __FILE__)
+    end
+
+    def test_exports_undefined
+      assert_equal 'undefined',
+        @ctx.eval_string('typeof exports', __FILE__)
+    end
   end
 
   ## Previous bugs in Duktape
