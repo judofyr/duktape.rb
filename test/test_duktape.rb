@@ -184,6 +184,12 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "string encoding" do
+    def test_string_utf8_encoding
+      assert_equal Encoding::UTF_8, @ctx.eval_string('"foo"', __FILE__).encoding
+    end
+  end
+
   describe "ComplexObject instance" do
     def test_survives_bad_people
       Duktape::ComplexObject.instance_variable_set(:@instance, nil)
