@@ -95,6 +95,8 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 
 static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 {
+  duk_idx_t arr_idx;
+
   switch (TYPE(obj)) {
     case T_FIXNUM:
       duk_push_int(ctx, NUM2INT(obj));
@@ -118,6 +120,14 @@ static int ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 
     case T_NIL:
       duk_push_null(ctx);
+      break;
+
+    case T_ARRAY:
+      arr_idx = duk_push_array(ctx);
+      for (int idx = 0; idx < RARRAY_LEN(obj); idx++) {
+        ctx_push_ruby_object(ctx, rb_ary_entry(obj, idx));
+        duk_put_prop_index(ctx, arr_idx, idx);
+      }
       break;
 
     default:

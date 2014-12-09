@@ -110,6 +110,11 @@ class TestDuktape < Minitest::Spec
       assert_equal nil, @ctx.call_prop('id', nil)
     end
 
+    def test_arrays
+      assert_equal [1.0], @ctx.call_prop('id', [1])
+      assert_equal [['foo', [1.0]]], @ctx.call_prop('id', [['foo', [1]]])
+    end
+
     def test_unknown_argument_type
       err = assert_raises(TypeError) do
         @ctx.call_prop('id', Object.new)
