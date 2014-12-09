@@ -35,6 +35,12 @@ class TestDuktape < Minitest::Spec
       assert_equal [1, [2, [3]]], @ctx.eval_string('[1, [2, [3]]]', __FILE__)
     end
 
+    def test_object
+      assert_equal({ "a" => 1, "b" => 2 }, @ctx.eval_string('obj = {a: 1, b: 2}', __FILE__))
+      assert_equal({ "a" => 1, "b" => [2] }, @ctx.eval_string('obj = {a: 1, b: [2]}', __FILE__))
+      assert_equal({ "a" => 1, "b" => { "c" => 2 } }, @ctx.eval_string('obj = {a: 1, b: {c: 2}}', __FILE__))
+    end
+
     def test_complex_object
       assert_equal Duktape::ComplexObject.instance,
         @ctx.eval_string('a = function() {}', __FILE__)
