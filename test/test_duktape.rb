@@ -11,6 +11,21 @@ class TestDuktape < Minitest::Spec
   end
 
   describe "#eval_string" do
+    def test_requires_string
+      assert_raises(TypeError) do
+        @ctx.eval_string(123, __FILE__)
+      end
+    end
+
+    def test_works_with_to_str
+      a = Object.new
+      def a.to_str
+        '"123"'
+      end
+
+      assert_equal '123', @ctx.eval_string(a, __FILE__)
+    end
+
     def test_string
       assert_equal '123', @ctx.eval_string('"123"', __FILE__)
     end

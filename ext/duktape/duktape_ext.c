@@ -168,6 +168,9 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
   duk_context *ctx;
   Data_Get_Struct(self, duk_context, ctx);
 
+  StringValue(source);
+  StringValue(filename);
+
   duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
   duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
   duk_compile(ctx, DUK_COMPILE_EVAL);
@@ -182,6 +185,9 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
 {
   duk_context *ctx;
   Data_Get_Struct(self, duk_context, ctx);
+
+  StringValue(source);
+  StringValue(filename);
 
   duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
   duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
