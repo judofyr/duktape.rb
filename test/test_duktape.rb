@@ -182,6 +182,13 @@ class TestDuktape < Minitest::Spec
         @ctx.call_prop('id', {'key' => Object.new})
       end
     end
+
+    def test_nested_property
+      @ctx.eval_string <<-JS, __FILE__
+        a = {}; a.b = {}; a.b.id = function(v) { return v; }
+      JS
+      assert_equal 'Hei', @ctx.call_prop('a.b.id', 'Hei')
+    end
   end
 
   describe "ComplexObject instance" do
