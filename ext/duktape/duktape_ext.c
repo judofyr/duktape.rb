@@ -60,6 +60,30 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
       return rb_str_new(buf, len);
 
     case DUK_TYPE_OBJECT:
+      if (duk_is_function(ctx, index)) {
+        return oComplexObject;
+      } else if (duk_is_array(ctx, index)) {
+        VALUE ary = rb_ary_new();
+        duk_enum(ctx, index, DUK_ENUM_ARRAY_INDICES_ONLY);
+        while (duk_next(ctx, -1, 1)) {
+          rb_ary_store(ary, duk_to_int(ctx, -2), ctx_stack_to_value(ctx, -1));
+          duk_pop_2(ctx);
+        }
+        duk_pop(ctx);
+        return ary;
+      } else if (duk_is_object(ctx, index)) {
+        VALUE hash = rb_hash_new();
+        duk_enum(ctx, index, 0);
+        while (duk_next(ctx, -1, 1)) {
+          rb_hash_aset(hash, ctx_stack_to_value(ctx, -2), ctx_stack_to_value(ctx, -1));
+          duk_pop_2(ctx);
+        }
+        duk_pop(ctx);
+        return hash;
+      } else {
+        return oComplexObject;
+      }
+
     case DUK_TYPE_BUFFER:
     case DUK_TYPE_POINTER:
     default:
