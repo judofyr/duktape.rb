@@ -341,7 +341,10 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
     rb_jump_tag(state);
   }
 
-  duk_call_prop(ctx, -(argc + 1), (argc - 1));
+  if (duk_pcall_prop(ctx, -(argc + 1), (argc - 1)) == DUK_EXEC_ERROR) {
+    raise_ctx_error(ctx);
+  }
+
   VALUE res = ctx_stack_to_value(ctx, -1);
   duk_set_top(ctx, 0);
   return res;

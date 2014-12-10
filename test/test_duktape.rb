@@ -165,7 +165,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_reference_error
-      assert_raises(Duktape::ReferenceError) do
+      assert_raises(Duktape::TypeError) do
         @ctx.call_prop('missing')
       end
     end
