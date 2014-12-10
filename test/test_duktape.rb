@@ -61,6 +61,12 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('a = function() {}', __FILE__)
     end
 
+    def test_throw_error
+      assert_raises(Duktape::Error) do
+        @ctx.eval_string('throw new Error("boom")', __FILE__)
+      end
+    end
+
     def test_reference_error
       assert_raises(Duktape::ReferenceError) do
         @ctx.eval_string('fail', __FILE__)
@@ -89,6 +95,12 @@ class TestDuktape < Minitest::Spec
     def test_doesnt_try_convert
       @ctx.exec_string('a = {b:1}', __FILE__)
       assert_equal 1.0, @ctx.eval_string('a.b', __FILE__)
+    end
+
+    def test_throw_error
+      assert_raises(Duktape::Error) do
+        @ctx.exec_string('throw new Error("boom")', __FILE__)
+      end
     end
 
     def test_reference_error
@@ -162,6 +174,20 @@ class TestDuktape < Minitest::Spec
     def test_hashes
       assert_equal({'hello' => 123}, @ctx.call_prop('id', {'hello' => 123}))
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
+    end
+
+    def test_throw_error
+      @ctx.eval_string('function fail(msg) { throw new Error(msg) }', __FILE__)
+
+      assert_raises(Duktape::Error) do
+        @ctx.call_prop('fail', 'boom', __FILE__)
+      end
+    end
+
+    def test_type_error
+      assert_raises(Duktape::TypeError) do
+        @ctx.call_prop('missing')
+      end
     end
 
     def test_unknown_argument_type
