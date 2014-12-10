@@ -164,7 +164,7 @@ class TestDuktape < Minitest::Spec
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
     end
 
-    def test_reference_error
+    def test_type_error
       assert_raises(Duktape::TypeError) do
         @ctx.call_prop('missing')
       end
