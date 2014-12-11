@@ -128,12 +128,23 @@ class TestDuktape < Minitest::Spec
       assert_equal 1.0, @ctx.get_prop('a')
     end
 
+    def test_nested
+      @ctx.eval_string('a = {}; a.b = {}; a.b.c = 1', __FILE__)
+      assert_equal 1.0, @ctx.get_prop(['a', 'b', 'c'])
+    end
+
     def test_missing
       err = assert_raises(Duktape::ReferenceError) do
         @ctx.get_prop('a')
       end
 
       assert_equal 'no such prop: a', err.message
+    end
+
+    def test_nested_reference_error
+      assert_raises(Duktape::ReferenceError) do
+        @ctx.get_prop(['global', 'missing'])
+      end
     end
   end
 
@@ -176,11 +187,30 @@ class TestDuktape < Minitest::Spec
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
     end
 
+    def test_binding
+      @ctx.eval_string <<-JS, __FILE__
+        var self = this
+        function test() { return this === self }
+      JS
+      assert_equal true, @ctx.call_prop('test')
+    end
+
     def test_nested_property
       @ctx.eval_string <<-JS, __FILE__
-        a = {}; a.b = {}; a.b.id = function(v) { return v; }
+        a = {}
+        a.b = {}
+        a.b.id = function(v) { return v; }
       JS
       assert_equal 'Hei', @ctx.call_prop(['a', 'b', 'id'], 'Hei')
+    end
+
+    def test_nested_binding
+      @ctx.eval_string <<-JS, __FILE__
+        a = {}
+        a.b = {}
+        a.b.test = function() { return this == a.b; }
+      JS
+      assert_equal true, @ctx.call_prop(['a', 'b', 'test'])
     end
 
     def test_throw_error
@@ -191,9 +221,15 @@ class TestDuktape < Minitest::Spec
       end
     end
 
-    def test_type_error
-      assert_raises(Duktape::TypeError) do
+    def test_reference_error
+      assert_raises(Duktape::ReferenceError) do
         @ctx.call_prop('missing')
+      end
+    end
+
+    def test_nested_reference_error
+      assert_raises(Duktape::ReferenceError) do
+        @ctx.call_prop(['global', 'missing'])
       end
     end
 
