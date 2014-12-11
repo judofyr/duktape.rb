@@ -297,20 +297,56 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
   return Qnil;
 }
 
+static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
+{
+  switch (TYPE(props)) {
+    case T_STRING:
+      duk_push_global_object(ctx);
+      duk_push_lstring(ctx, RSTRING_PTR(props), RSTRING_LEN(props));
+      if (!duk_get_prop(ctx, -2)) {
+        duk_set_top(ctx, 0);
+        const char *str = StringValueCStr(props);
+        rb_raise(eReferenceError, "identifier '%s' undefined", str);
+      }
+      return;
+
+    case T_ARRAY:
+      duk_push_global_object(ctx);
+
+      long len = RARRAY_LEN(props);
+      for (int i = 0; i < len; i++) {
+        VALUE item = rb_ary_entry(props, i);
+        Check_Type(item, T_STRING);
+
+        duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
+
+        if (!duk_get_prop(ctx, -2)) {
+          if (i + 1 == len) {
+            duk_push_undefined(ctx);
+          } else {
+            duk_set_top(ctx, 0);
+            if (i == 0) {
+              rb_raise(eReferenceError, "identifier '%s' undefined", StringValueCStr(item));
+            } else {
+              rb_raise(eTypeError, "invalid base value");
+            }
+          }
+        }
+      }
+      return;
+
+    default:
+      rb_raise(rb_eTypeError, "wrong argument type %s (expected String or Array)", rb_obj_classname(props));
+      return;
+  }
+}
+
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
 {
   duk_context *ctx;
   Data_Get_Struct(self, duk_context, ctx);
 
-  Check_Type(prop, T_STRING);
-
-  duk_push_global_object(ctx);
-  duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
-  if (!duk_get_prop(ctx, -2)) {
-    duk_set_top(ctx, 0);
-    const char *str = StringValueCStr(prop);
-    rb_raise(eReferenceError, "no such prop: %s", str);
-  }
+  ctx_get_nested_prop(ctx, prop);
 
   VALUE res = ctx_stack_to_value(ctx, -1);
   duk_set_top(ctx, 0);
@@ -326,10 +362,10 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   VALUE *prop_args;
   rb_scan_args(argc, argv, "1*", &prop, &prop_args);
 
-  Check_Type(prop, T_STRING);
+  ctx_get_nested_prop(ctx, prop);
 
-  duk_push_global_object(ctx);
-  duk_push_lstring(ctx, RSTRING_PTR(prop), RSTRING_LEN(prop));
+  // Swap receiver and function
+  duk_swap_top(ctx, -2);
 
   struct ARGS args;
   args.ctx = ctx;
@@ -346,7 +382,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
     rb_jump_tag(state);
   }
 
-  if (duk_pcall_prop(ctx, -(argc + 1), (argc - 1)) == DUK_EXEC_ERROR) {
+  if (duk_pcall_method(ctx, (argc - 1)) == DUK_EXEC_ERROR) {
     raise_ctx_error(ctx);
   }
 
