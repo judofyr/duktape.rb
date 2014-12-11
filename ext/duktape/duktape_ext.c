@@ -121,14 +121,14 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
 
-      VALUE str = rb_funcall(
-        rb_funcall(
+      VALUE str = rb_str_conv_enc(
+        rb_enc_associate(
           rb_funcall(
             rb_funcall(rb_str_new(buf, len),
               rb_intern("unpack"), 1, rb_str_new2("U*")),
             rb_intern("pack"), 1, rb_str_new2("S*")),
-          rb_intern("force_encoding"), 1, rb_str_new2("UTF-16LE")),
-        rb_intern("encode"), 1, rb_str_new2("UTF-8"));
+          rb_enc_find("UTF-16LE")),
+        rb_enc_find("UTF-16LE"), rb_utf8_encoding());
 
       return str;
 
@@ -183,8 +183,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
     case T_STRING:
       str = rb_funcall(
         rb_funcall(
-          rb_funcall(obj,
-            rb_intern("encode"), 1, rb_str_new2("UTF-16LE")),
+          rb_str_conv_enc(obj, rb_enc_get(obj), rb_enc_find("UTF-16LE")),
           rb_intern("unpack"), 1, rb_str_new2("S*")),
         rb_intern("pack"), 1, rb_str_new2("U*"));
 
