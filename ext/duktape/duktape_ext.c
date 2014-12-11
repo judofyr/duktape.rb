@@ -22,9 +22,13 @@ static VALUE eReferenceError;
 static VALUE eSyntaxError;
 static VALUE eTypeError;
 static VALUE eURIError;
+static rb_encoding *utf16enc;
 
 static void error_handler(duk_context *, int, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
+
+static unsigned long
+utf8_to_uv(const char *p, long *lenp);
 
 #define clean_raise(ctx, ...) (duk_set_top(ctx, 0), rb_raise(__VA_ARGS__))
 
@@ -102,6 +106,44 @@ static VALUE error_name_class(const char* name)
   }
 }
 
+static VALUE encode_cesu8(VALUE str)
+{
+
+  VALUE res = rb_str_new(0, 0);
+
+  VALUE utf16 = rb_str_conv_enc(str, NULL, utf16enc);
+
+  long len = RSTRING_LEN(utf16) / 2;
+  unsigned short *bytes = (unsigned short *)RSTRING_PTR(utf16);
+
+  char buf[8];
+
+  for (int i = 0; i < len; i++) {
+    int length = rb_uv_to_utf8(buf, bytes[i]);
+    rb_str_buf_cat(res, (char*)buf, length);
+  }
+
+  return res;
+}
+
+static VALUE decode_cesu8(VALUE str)
+{
+  VALUE res = rb_str_new(0, 0);
+
+  const char *ptr = RSTRING_PTR(str);
+  const char *end = RSTRING_END(str);
+  long len;
+
+  while (ptr < end) {
+    unsigned short code = utf8_to_uv(ptr, &len);
+    rb_str_buf_cat(res, (char*)&code, 2);
+    ptr += len;
+  }
+
+  rb_enc_associate(res, utf16enc);
+  return rb_str_conv_enc(res, NULL, rb_utf8_encoding());
+}
+
 static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 {
   size_t len;
@@ -123,8 +165,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
       VALUE str = rb_str_new(buf, len);
-      rb_enc_associate(str, rb_utf8_encoding());
-      return str;
+      return decode_cesu8(str);
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
@@ -179,7 +220,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       return;
 
     case T_STRING:
-      str = rb_str_conv_enc(obj, rb_enc_get(obj), rb_utf8_encoding());
+      str = encode_cesu8(obj);
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 
@@ -248,8 +289,8 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
   StringValue(source);
   StringValue(filename);
 
-  duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
-  duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
+  ctx_push_ruby_object(ctx, source);
+  ctx_push_ruby_object(ctx, filename);
 
   if (duk_pcompile(ctx, DUK_COMPILE_EVAL) == DUK_EXEC_ERROR) {
     raise_ctx_error(ctx);
@@ -272,8 +313,8 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
   StringValue(source);
   StringValue(filename);
 
-  duk_push_lstring(ctx, RSTRING_PTR(source), RSTRING_LEN(source));
-  duk_push_lstring(ctx, RSTRING_PTR(filename), RSTRING_LEN(filename));
+  ctx_push_ruby_object(ctx, source);
+  ctx_push_ruby_object(ctx, filename);
 
   if (duk_pcompile(ctx, 0) == DUK_EXEC_ERROR) {
     raise_ctx_error(ctx);
@@ -395,6 +436,8 @@ VALUE complex_object_instance(VALUE self)
 
 void Init_duktape_ext()
 {
+  utf16enc = rb_enc_find("UTF-16LE");
+
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
   cComplexObject = rb_define_class_under(mDuktape, "ComplexObject", rb_cObject);
@@ -427,3 +470,68 @@ void Init_duktape_ext()
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
   rb_ivar_set(cComplexObject, rb_intern("duktape.instance"), oComplexObject);
 }
+
+
+/* UTF8 crap which is not exposed by Ruby */
+
+static const unsigned long utf8_limits[] = {
+    0x0,			/* 1 */
+    0x80,			/* 2 */
+    0x800,			/* 3 */
+    0x10000,			/* 4 */
+    0x200000,			/* 5 */
+    0x4000000,			/* 6 */
+    0x80000000,			/* 7 */
+};
+
+static unsigned long
+utf8_to_uv(const char *p, long *lenp)
+{
+  int c = *p++ & 0xff;
+  unsigned long uv = c;
+  long n;
+
+  if (!(uv & 0x80)) {
+    *lenp = 1;
+    return uv;
+  }
+  if (!(uv & 0x40)) {
+    *lenp = 1;
+    rb_raise(rb_eArgError, "malformed UTF-8 character");
+  }
+
+  if      (!(uv & 0x20)) { n = 2; uv &= 0x1f; }
+  else if (!(uv & 0x10)) { n = 3; uv &= 0x0f; }
+  else if (!(uv & 0x08)) { n = 4; uv &= 0x07; }
+  else if (!(uv & 0x04)) { n = 5; uv &= 0x03; }
+  else if (!(uv & 0x02)) { n = 6; uv &= 0x01; }
+  else {
+    *lenp = 1;
+    rb_raise(rb_eArgError, "malformed UTF-8 character");
+  }
+  if (n > *lenp) {
+    rb_raise(rb_eArgError, "malformed UTF-8 character (expected %ld bytes, given %ld bytes)",
+        n, *lenp);
+  }
+  *lenp = n--;
+  if (n != 0) {
+    while (n--) {
+      c = *p++ & 0xff;
+      if ((c & 0xc0) != 0x80) {
+        *lenp -= n + 1;
+        rb_raise(rb_eArgError, "malformed UTF-8 character");
+      }
+      else {
+        c &= 0x3f;
+        uv = uv << 6 | c;
+      }
+    }
+  }
+  n = *lenp - 1;
+  if (uv < utf8_limits[n]) {
+    rb_raise(rb_eArgError, "redundant UTF-8 sequence");
+  }
+  return uv;
+}
+
+
