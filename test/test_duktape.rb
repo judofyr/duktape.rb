@@ -302,6 +302,23 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "string encoding" do
+    def test_string_utf8_encoding
+      str = @ctx.eval_string('"foo"', __FILE__)
+      assert_equal 'foo', str
+      assert_equal Encoding::UTF_8, str.encoding
+    end
+
+    def test_arguments_are_transcoded_to_utf8
+      @ctx.eval_string('function id(a) { return a }', __FILE__)
+      # "foo" as UTF-16LE bytes
+      str = "\x66\x00\x6f\x00\x6f\00".force_encoding(Encoding::UTF_16LE)
+      str = @ctx.call_prop('id', str)
+      assert_equal 'foo', str
+      assert_equal Encoding::UTF_8, str.encoding
+    end
+  end
+
   describe "ComplexObject instance" do
     def test_survives_bad_people
       Duktape::ComplexObject.instance_variable_set(:@instance, nil)
