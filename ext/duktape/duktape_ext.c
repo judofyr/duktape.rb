@@ -187,7 +187,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
             rb_intern("encode"), 1, rb_str_new2("UTF-16LE")),
           rb_intern("unpack"), 1, rb_str_new2("S*")),
         rb_intern("pack"), 1, rb_str_new2("U*"));
-      // str = rb_str_conv_enc(obj, rb_enc_get(obj), rb_utf8_encoding());
+
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 
