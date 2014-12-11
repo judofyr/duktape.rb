@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "duktape.h"
 
 static VALUE mDuktape;
@@ -119,7 +120,9 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
-      return rb_str_new(buf, len);
+      VALUE str = rb_str_new(buf, len);
+      rb_enc_associate(str, rb_utf8_encoding());
+      return str;
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
