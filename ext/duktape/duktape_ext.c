@@ -26,6 +26,8 @@ static VALUE eURIError;
 static void error_handler(duk_context *, int, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
+#define clean_raise(ctx, ...) (duk_set_top(ctx, 0), rb_raise(__VA_ARGS__))
+
 static void ctx_dealloc(void *ctx)
 {
   duk_destroy_heap((duk_context *)ctx);
@@ -146,10 +148,14 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
         return ary;
       } else if (duk_is_object(ctx, index)) {
         VALUE hash = rb_hash_new();
-        duk_enum(ctx, index, 0);
+        duk_enum(ctx, index, DUK_ENUM_OWN_PROPERTIES_ONLY);
         while (duk_next(ctx, -1, 1)) {
-          rb_hash_aset(hash, ctx_stack_to_value(ctx, -2), ctx_stack_to_value(ctx, -1));
+          VALUE key = ctx_stack_to_value(ctx, -2);
+          VALUE val = ctx_stack_to_value(ctx, -1);
           duk_pop_2(ctx);
+          if (val == oComplexObject)
+            continue;
+          rb_hash_aset(hash, key, val);
         }
         duk_pop(ctx);
         return hash;
@@ -220,23 +226,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       break;
   }
 
-  rb_raise(rb_eTypeError, "cannot convert %s", rb_obj_classname(obj));
-}
-
-struct ARGS
-{
-  duk_context *ctx;
-  int argc;
-  VALUE *argv;
-};
-
-static VALUE ctx_push_args(VALUE vargs)
-{
-  struct ARGS *args = (struct ARGS*)vargs;
-  for (int i = 0; i < args->argc; i++) {
-    ctx_push_ruby_object(args->ctx, args->argv[i]);
-  }
-  return Qnil;
+  clean_raise(ctx, rb_eTypeError, "cannot convert %s", rb_obj_classname(obj));
 }
 
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra)
@@ -260,7 +250,7 @@ static void raise_ctx_error(duk_context *ctx)
   const char *message = duk_to_string(ctx, -1);
   duk_pop(ctx);
 
-  rb_raise(error_name_class(name), "%s", message);
+  clean_raise(ctx, error_name_class(name), "%s", message);
 }
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
@@ -314,7 +304,7 @@ static void ctx_get_one_prop(duk_context *ctx, VALUE name, int strict)
 {
   // Don't allow prop access on undefined/null
   if (duk_check_type_mask(ctx, -1, DUK_TYPE_MASK_UNDEFINED | DUK_TYPE_MASK_NULL)) {
-    rb_raise(eTypeError, "invalid base value");
+    clean_raise(ctx, eTypeError, "invalid base value");
   }
 
   duk_push_lstring(ctx, RSTRING_PTR(name), RSTRING_LEN(name));
@@ -322,7 +312,7 @@ static void ctx_get_one_prop(duk_context *ctx, VALUE name, int strict)
 
   if (!exists && strict) {
     const char *str = StringValueCStr(name);
-    rb_raise(eReferenceError, "identifier '%s' undefined", str);
+    clean_raise(ctx, eReferenceError, "identifier '%s' undefined", str);
   }
 }
 
@@ -348,7 +338,7 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
       return;
 
     default:
-      rb_raise(rb_eTypeError, "wrong argument type %s (expected String or Array)", rb_obj_classname(props));
+      clean_raise(ctx, rb_eTypeError, "wrong argument type %s (expected String or Array)", rb_obj_classname(props));
       return;
   }
 }
@@ -379,19 +369,9 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   // Swap receiver and function
   duk_swap_top(ctx, -2);
 
-  struct ARGS args;
-  args.ctx = ctx;
-  args.argc = argc - 1;
-  args.argv = argv + 1;
-  int state = 0;
-
-  rb_protect(ctx_push_args, (VALUE)&args, &state);
-
-  if (state) {
-    // Exception happened when handling arguments
-    // Reset stack to ensure we don't leak any data
-    duk_set_top(ctx, 0);
-    rb_jump_tag(state);
+  // Push arguments
+  for (int i = 1; i < argc; i++) {
+    ctx_push_ruby_object(ctx, argv[i]);
   }
 
   if (duk_pcall_method(ctx, (argc - 1)) == DUK_EXEC_ERROR) {
@@ -403,10 +383,22 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return res;
 }
 
+// Checks that we are in a fine state
+static VALUE ctx_is_valid(VALUE self)
+{
+  duk_context *ctx;
+  Data_Get_Struct(self, duk_context, ctx);
+
+  if (duk_is_valid_index(ctx, -1)) {
+    return Qfalse;
+  } else {
+    return Qtrue;
+  }
+}
+
 static void error_handler(duk_context *ctx, int code, const char *msg)
 {
-  duk_set_top(ctx, 0);
-  return rb_raise(error_code_class(code), "%s", msg);
+  clean_raise(ctx, error_code_class(code), "%s", msg);
 }
 
 VALUE complex_object_instance(VALUE self)
@@ -442,6 +434,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "exec_string", ctx_exec_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
+  rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
 
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);

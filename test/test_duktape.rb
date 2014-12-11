@@ -10,6 +10,10 @@ class TestDuktape < Minitest::Spec
     @ctx = Duktape::Context.new
   end
 
+  def teardown
+    assert @ctx._valid?, "Context is in a weird state"
+  end
+
   describe "#eval_string" do
     def test_requires_string
       assert_raises(TypeError) do
@@ -218,6 +222,25 @@ class TestDuktape < Minitest::Spec
     def test_hashes
       assert_equal({'hello' => 123}, @ctx.call_prop('id', {'hello' => 123}))
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
+    end
+
+    def test_hashes_with_complex_values
+      res = @ctx.eval_string('({a:1,b:function(){}})', __FILE__)
+      assert_equal({'a' => 1}, res)
+    end
+
+    def test_objects_with_prototypes
+      res = @ctx.eval_string <<-JS, __FILE__
+      function A() {
+        this.value = 123;
+        this.fn = function() {};
+      }
+      A.prototype.b = 456;
+      A.prototype.c = function() {};
+      new A;
+      JS
+
+      assert_equal({'value' => 123}, res)
     end
 
     def test_binding

@@ -1,6 +1,8 @@
 require 'bundler/setup'
 require 'rake/extensiontask'
 
+CLOBBER.include('ext/duktape/duktape.{c,h}')
+
 $gemspec = Gem::Specification.load('duktape.gemspec')
 
 task :compile => 'ext/duktape/duktape.c'
