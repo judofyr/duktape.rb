@@ -331,7 +331,7 @@ class TestDuktape < Minitest::Spec
       assert_equal 2, @ctx.eval_string("'#{str}'.length", __FILE__)
 
       # US flag emoji
-      str = "\u{1f1fa}\u{1f1f8}".force_encoding("UTF-8")
+      str = "\u{1f1fa}\u{1f1f8}".encode("UTF-8")
       assert_equal str, @ctx.call_prop('id', str)
       assert_equal 4, @ctx.call_prop('len', str)
       assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
