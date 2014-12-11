@@ -6,6 +6,8 @@
 * Return instance of ComplexObject for complex objects
 * Arrays and objects can now be returned from JavaScript context
 * Arrays and hashes can now be passes into JavaScript context
+* `call_prop` and `get_prop` now allows nested access
+* Transcode strings to UTF-8
 
 ## v1.0.2.0 (2014-12-06)
 
