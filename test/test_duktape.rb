@@ -62,27 +62,35 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_throw_error
-      assert_raises(Duktape::Error) do
+      err = assert_raises(Duktape::Error) do
         @ctx.eval_string('throw new Error("boom")', __FILE__)
       end
+
+      assert_equal "boom", err.message
     end
 
     def test_reference_error
-      assert_raises(Duktape::ReferenceError) do
+      err = assert_raises(Duktape::ReferenceError) do
         @ctx.eval_string('fail', __FILE__)
       end
+
+      assert_equal "identifier 'fail' undefined", err.message
     end
 
     def test_syntax_error
-      assert_raises(Duktape::SyntaxError) do
+      err = assert_raises(Duktape::SyntaxError) do
         @ctx.eval_string('{', __FILE__)
       end
+
+      assert_equal "parse error (line 1)", err.message
     end
 
     def test_type_error
-      assert_raises(Duktape::TypeError) do
+      err = assert_raises(Duktape::TypeError) do
         @ctx.eval_string('null.fail', __FILE__)
       end
+
+      assert_equal "invalid base value", err.message
     end
   end
 
@@ -98,27 +106,35 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_throw_error
-      assert_raises(Duktape::Error) do
+      err = assert_raises(Duktape::Error) do
         @ctx.exec_string('throw new Error("boom")', __FILE__)
       end
+
+      assert_equal "boom", err.message
     end
 
     def test_reference_error
-      assert_raises(Duktape::ReferenceError) do
+      err = assert_raises(Duktape::ReferenceError) do
         @ctx.exec_string('fail', __FILE__)
       end
+
+      assert_equal "identifier 'fail' undefined", err.message
     end
 
     def test_syntax_error
-      assert_raises(Duktape::SyntaxError) do
+      err = assert_raises(Duktape::SyntaxError) do
         @ctx.exec_string('{', __FILE__)
       end
+
+      assert_equal "parse error (line 1)", err.message
     end
 
     def test_type_error
-      assert_raises(Duktape::TypeError) do
+      err = assert_raises(Duktape::TypeError) do
         @ctx.exec_string('null.fail', __FILE__)
       end
+
+      assert_equal "invalid base value", err.message
     end
   end
 
@@ -138,7 +154,7 @@ class TestDuktape < Minitest::Spec
         @ctx.get_prop('a')
       end
 
-      assert_equal 'no such prop: a', err.message
+      assert_equal "identifier 'a' undefined", err.message
     end
 
     def test_nested_reference_error
@@ -216,15 +232,19 @@ class TestDuktape < Minitest::Spec
     def test_throw_error
       @ctx.eval_string('function fail(msg) { throw new Error(msg) }', __FILE__)
 
-      assert_raises(Duktape::Error) do
+      err = assert_raises(Duktape::Error) do
         @ctx.call_prop('fail', 'boom', __FILE__)
       end
+
+      assert_equal "boom", err.message
     end
 
     def test_reference_error
-      assert_raises(Duktape::ReferenceError) do
+      err = assert_raises(Duktape::ReferenceError) do
         @ctx.call_prop('missing')
       end
+
+      assert_equal "identifier 'missing' undefined", err.message
     end
 
     def test_nested_reference_error

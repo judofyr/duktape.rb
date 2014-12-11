@@ -300,7 +300,7 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
     if (!duk_get_prop(ctx, -2)) {
       duk_set_top(ctx, 0);
       const char *str = StringValueCStr(props);
-      rb_raise(eReferenceError, "no such prop: %s", str);
+      rb_raise(eReferenceError, "identifier '%s' undefined", str);
     }
   } else if (TYPE(props) == T_ARRAY) {
     int i;
