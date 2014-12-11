@@ -224,6 +224,11 @@ class TestDuktape < Minitest::Spec
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
     end
 
+    def test_hashes_with_complex_values
+      res = @ctx.eval_string('({a:1,b:function(){}})', __FILE__)
+      assert_equal({'a' => 1}, res)
+    end
+
     def test_binding
       @ctx.eval_string <<-JS, __FILE__
         var self = this

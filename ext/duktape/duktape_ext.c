@@ -142,8 +142,12 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
         VALUE hash = rb_hash_new();
         duk_enum(ctx, index, 0);
         while (duk_next(ctx, -1, 1)) {
-          rb_hash_aset(hash, ctx_stack_to_value(ctx, -2), ctx_stack_to_value(ctx, -1));
+          VALUE key = ctx_stack_to_value(ctx, -2);
+          VALUE val = ctx_stack_to_value(ctx, -1);
           duk_pop_2(ctx);
+          if (val == oComplexObject)
+            continue;
+          rb_hash_aset(hash, key, val);
         }
         duk_pop(ctx);
         return hash;
