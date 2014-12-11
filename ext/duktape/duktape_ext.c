@@ -292,17 +292,28 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
   return Qnil;
 }
 
+static void ctx_get_one_prop(duk_context *ctx, VALUE name, int strict)
+{
+  // Don't allow prop access on undefined/null
+  if (duk_check_type_mask(ctx, -1, DUK_TYPE_MASK_UNDEFINED | DUK_TYPE_MASK_NULL)) {
+    rb_raise(eTypeError, "invalid base value");
+  }
+
+  duk_push_lstring(ctx, RSTRING_PTR(name), RSTRING_LEN(name));
+  duk_bool_t exists = duk_get_prop(ctx, -2);
+
+  if (!exists && strict) {
+    const char *str = StringValueCStr(name);
+    rb_raise(eReferenceError, "identifier '%s' undefined", str);
+  }
+}
+
 static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
 {
   switch (TYPE(props)) {
     case T_STRING:
       duk_push_global_object(ctx);
-      duk_push_lstring(ctx, RSTRING_PTR(props), RSTRING_LEN(props));
-      if (!duk_get_prop(ctx, -2)) {
-        duk_set_top(ctx, 0);
-        const char *str = StringValueCStr(props);
-        rb_raise(eReferenceError, "identifier '%s' undefined", str);
-      }
+      ctx_get_one_prop(ctx, props, 1);
       return;
 
     case T_ARRAY:
@@ -313,20 +324,8 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
         VALUE item = rb_ary_entry(props, i);
         Check_Type(item, T_STRING);
 
-        duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
-
-        if (!duk_get_prop(ctx, -2)) {
-          if (i + 1 == len) {
-            duk_push_undefined(ctx);
-          } else {
-            duk_set_top(ctx, 0);
-            if (i == 0) {
-              rb_raise(eReferenceError, "identifier '%s' undefined", StringValueCStr(item));
-            } else {
-              rb_raise(eTypeError, "invalid base value");
-            }
-          }
-        }
+        // Only do a strict check on the first item
+        ctx_get_one_prop(ctx, item, i == 0);
       }
       return;
 
