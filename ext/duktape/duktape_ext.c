@@ -294,9 +294,6 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
 
 static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
 {
-  long i, len;
-  VALUE item;
-
   switch (TYPE(props)) {
     case T_STRING:
       duk_push_global_object(ctx);
@@ -311,25 +308,25 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
     case T_ARRAY:
       duk_push_global_object(ctx);
 
-      len = RARRAY_LEN(props);
-      for (i = 0; i < len; i++) {
-  	     item = RARRAY_AREF(props, i);
-         Check_Type(item, T_STRING);
+      long len = RARRAY_LEN(props);
+      for (int i = 0; i < len; i++) {
+        VALUE item = rb_ary_entry(props, i);
+        Check_Type(item, T_STRING);
 
-         duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
+        duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
 
-         if (!duk_get_prop(ctx, -2)) {
-           if (i + 1 == len) {
-             duk_push_undefined(ctx);
-           } else {
-             duk_set_top(ctx, 0);
-             if (i == 0) {
-               rb_raise(eReferenceError, "identifier '%s' undefined", StringValueCStr(item));
-             } else {
-               rb_raise(eTypeError, "invalid base value");
-             }
-           }
-         }
+        if (!duk_get_prop(ctx, -2)) {
+          if (i + 1 == len) {
+            duk_push_undefined(ctx);
+          } else {
+            duk_set_top(ctx, 0);
+            if (i == 0) {
+              rb_raise(eReferenceError, "identifier '%s' undefined", StringValueCStr(item));
+            } else {
+              rb_raise(eTypeError, "invalid base value");
+            }
+          }
+        }
       }
       return;
 
