@@ -303,19 +303,30 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
       rb_raise(eReferenceError, "identifier '%s' undefined", str);
     }
   } else if (TYPE(props) == T_ARRAY) {
-    int i;
+    long i, len;
     VALUE item;
 
     duk_push_global_object(ctx);
 
-    for (i = 0; i < RARRAY_LEN(props); i++) {
+    len = RARRAY_LEN(props);
+    for (i = 0; i < len; i++) {
 	     item = RARRAY_AREF(props, i);
        Check_Type(item, T_STRING);
+
        duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
+
        if (!duk_get_prop(ctx, -2)) {
-         duk_set_top(ctx, 0);
-         const char *str = StringValueCStr(item);
-         rb_raise(eReferenceError, "no such prop: %s", str);
+         if (i + 1 == len) {
+           duk_push_undefined(ctx);
+         } else {
+           duk_set_top(ctx, 0);
+           const char *str = StringValueCStr(item);
+           if (i == 0) {
+             rb_raise(eReferenceError, "identifier '%s' undefined", str);
+           } else {
+             rb_raise(eTypeError, "invalid base value");
+           }
+         }
        }
     }
   } else {

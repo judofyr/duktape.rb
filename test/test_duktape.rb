@@ -134,7 +134,7 @@ class TestDuktape < Minitest::Spec
         @ctx.exec_string('null.fail', __FILE__)
       end
 
-      assert_equal "invalid base value", err.message
+      assert_equal 'invalid base value', err.message
     end
   end
 
@@ -149,6 +149,11 @@ class TestDuktape < Minitest::Spec
       assert_equal 1.0, @ctx.get_prop(['a', 'b', 'c'])
     end
 
+    def test_nested_undefined
+      @ctx.eval_string('a = {}', __FILE__)
+      assert_equal nil, @ctx.get_prop(['a', 'missing'])
+    end
+
     def test_missing
       err = assert_raises(Duktape::ReferenceError) do
         @ctx.get_prop('a')
@@ -158,9 +163,21 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_reference_error
-      assert_raises(Duktape::ReferenceError) do
-        @ctx.get_prop(['global', 'missing'])
+      err = assert_raises(Duktape::ReferenceError) do
+        @ctx.get_prop(['a', 'b'])
       end
+
+      assert_equal "identifier 'a' undefined", err.message
+    end
+
+    def test_nested_type_error
+      @ctx.eval_string('a = {};', __FILE__)
+
+      err = assert_raises(Duktape::TypeError) do
+        @ctx.get_prop(['a', 'b', 'c'])
+      end
+
+      assert_equal 'invalid base value', err.message
     end
   end
 
@@ -248,9 +265,21 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_reference_error
-      assert_raises(Duktape::ReferenceError) do
-        @ctx.call_prop(['global', 'missing'])
+      err = assert_raises(Duktape::ReferenceError) do
+        @ctx.call_prop(['missing', 'foo'])
       end
+
+      assert_equal "identifier 'missing' undefined", err.message
+    end
+
+    def test_nested_type_error
+      @ctx.eval_string 'a = {}', __FILE__
+
+      err = assert_raises(Duktape::TypeError) do
+        @ctx.call_prop(['a', 'missing'])
+      end
+
+      assert_equal 'not callable', err.message
     end
 
     def test_unknown_argument_type
