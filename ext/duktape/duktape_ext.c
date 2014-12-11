@@ -1,4 +1,5 @@
 #include "ruby.h"
+#include "ruby/encoding.h"
 #include "duktape.h"
 
 static VALUE mDuktape;
@@ -119,7 +120,9 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
-      return rb_str_new(buf, len);
+      VALUE str = rb_str_new(buf, len);
+      rb_enc_associate(str, rb_utf8_encoding());
+      return str;
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
@@ -158,6 +161,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 {
   duk_idx_t arr_idx;
+  VALUE str;
 
   switch (TYPE(obj)) {
     case T_FIXNUM:
@@ -169,7 +173,8 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       return;
 
     case T_STRING:
-      duk_push_lstring(ctx, RSTRING_PTR(obj), RSTRING_LEN(obj));
+      str = rb_str_conv_enc(obj, rb_enc_get(obj), rb_utf8_encoding());
+      duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 
     case T_TRUE:
