@@ -294,44 +294,48 @@ static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
 
 static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
 {
-  if (TYPE(props) == T_STRING) {
-    duk_push_global_object(ctx);
-    duk_push_lstring(ctx, RSTRING_PTR(props), RSTRING_LEN(props));
-    if (!duk_get_prop(ctx, -2)) {
-      duk_set_top(ctx, 0);
-      const char *str = StringValueCStr(props);
-      rb_raise(eReferenceError, "identifier '%s' undefined", str);
-    }
-  } else if (TYPE(props) == T_ARRAY) {
-    long i, len;
-    VALUE item;
+  long i, len;
+  VALUE item;
 
-    duk_push_global_object(ctx);
+  switch (TYPE(props)) {
+    case T_STRING:
+      duk_push_global_object(ctx);
+      duk_push_lstring(ctx, RSTRING_PTR(props), RSTRING_LEN(props));
+      if (!duk_get_prop(ctx, -2)) {
+        duk_set_top(ctx, 0);
+        const char *str = StringValueCStr(props);
+        rb_raise(eReferenceError, "identifier '%s' undefined", str);
+      }
+      return;
 
-    len = RARRAY_LEN(props);
-    for (i = 0; i < len; i++) {
-	     item = RARRAY_AREF(props, i);
-       Check_Type(item, T_STRING);
+    case T_ARRAY:
+      duk_push_global_object(ctx);
 
-       duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
+      len = RARRAY_LEN(props);
+      for (i = 0; i < len; i++) {
+  	     item = RARRAY_AREF(props, i);
+         Check_Type(item, T_STRING);
 
-       if (!duk_get_prop(ctx, -2)) {
-         if (i + 1 == len) {
-           duk_push_undefined(ctx);
-         } else {
-           duk_set_top(ctx, 0);
-           const char *str = StringValueCStr(item);
-           if (i == 0) {
-             rb_raise(eReferenceError, "identifier '%s' undefined", str);
+         duk_push_lstring(ctx, RSTRING_PTR(item), RSTRING_LEN(item));
+
+         if (!duk_get_prop(ctx, -2)) {
+           if (i + 1 == len) {
+             duk_push_undefined(ctx);
            } else {
-             rb_raise(eTypeError, "invalid base value");
+             duk_set_top(ctx, 0);
+             if (i == 0) {
+               rb_raise(eReferenceError, "identifier '%s' undefined", StringValueCStr(item));
+             } else {
+               rb_raise(eTypeError, "invalid base value");
+             }
            }
          }
-       }
-    }
-  } else {
-    const char *etype = rb_obj_classname(props);
-    rb_raise(rb_eTypeError, "wrong argument type %s (expected String or Array)", etype);
+      }
+      return;
+
+    default:
+      rb_raise(rb_eTypeError, "wrong argument type %s (expected String or Array)", rb_obj_classname(props));
+      return;
   }
 }
 
