@@ -303,6 +303,11 @@ class TestDuktape < Minitest::Spec
   end
 
   describe "string encoding" do
+    before do
+      @ctx.eval_string('function id(str) { return str }', __FILE__)
+      @ctx.eval_string('function len(str) { return str.length }', __FILE__)
+    end
+
     def test_string_utf8_encoding
       str = @ctx.eval_string('"foo"', __FILE__)
       assert_equal 'foo', str
@@ -310,12 +315,27 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_arguments_are_transcoded_to_utf8
-      @ctx.eval_string('function id(a) { return a }', __FILE__)
       # "foo" as UTF-16LE bytes
       str = "\x66\x00\x6f\x00\x6f\00".force_encoding(Encoding::UTF_16LE)
       str = @ctx.call_prop('id', str)
       assert_equal 'foo', str
       assert_equal Encoding::UTF_8, str.encoding
+    end
+
+    def test_surrogate_pairs
+      # Smiling emoji
+      str = "\xf0\x9f\x98\x84".force_encoding("UTF-8")
+      assert_equal str, @ctx.call_prop('id', str)
+      assert_equal 2, @ctx.call_prop('len', str)
+      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
+      assert_equal 2, @ctx.eval_string("'#{str}'.length", __FILE__)
+
+      # US flag emoji
+      str = "\xf0\x9f\x87\xba\xf0\x9f\x87\xb8".force_encoding("UTF-8")
+      assert_equal str, @ctx.call_prop('id', str)
+      assert_equal 4, @ctx.call_prop('len', str)
+      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
+      assert_equal 4, @ctx.eval_string("'#{str}'.length", __FILE__)
     end
   end
 
