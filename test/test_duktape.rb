@@ -324,14 +324,14 @@ class TestDuktape < Minitest::Spec
 
     def test_surrogate_pairs
       # Smiling emoji
-      str = "\xf0\x9f\x98\x84".force_encoding("UTF-8")
+      str = "\u{1f604}".encode("UTF-8")
       assert_equal str, @ctx.call_prop('id', str)
       assert_equal 2, @ctx.call_prop('len', str)
       assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
       assert_equal 2, @ctx.eval_string("'#{str}'.length", __FILE__)
 
       # US flag emoji
-      str = "\xf0\x9f\x87\xba\xf0\x9f\x87\xb8".force_encoding("UTF-8")
+      str = "\u{1f1fa}\u{1f1f8}".force_encoding("UTF-8")
       assert_equal str, @ctx.call_prop('id', str)
       assert_equal 4, @ctx.call_prop('len', str)
       assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
