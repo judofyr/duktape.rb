@@ -229,6 +229,20 @@ class TestDuktape < Minitest::Spec
       assert_equal({'a' => 1}, res)
     end
 
+    def test_objects_with_prototypes
+      res = @ctx.eval_string <<-JS, __FILE__
+      function A() {
+        this.value = 123;
+        this.fn = function() {};
+      }
+      A.prototype.b = 456;
+      A.prototype.c = function() {};
+      new A;
+      JS
+
+      assert_equal({'value' => 123}, res)
+    end
+
     def test_binding
       @ctx.eval_string <<-JS, __FILE__
         var self = this

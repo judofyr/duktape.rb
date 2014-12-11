@@ -140,7 +140,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
         return ary;
       } else if (duk_is_object(ctx, index)) {
         VALUE hash = rb_hash_new();
-        duk_enum(ctx, index, 0);
+        duk_enum(ctx, index, DUK_ENUM_OWN_PROPERTIES_ONLY);
         while (duk_next(ctx, -1, 1)) {
           VALUE key = ctx_stack_to_value(ctx, -2);
           VALUE val = ctx_stack_to_value(ctx, -1);
