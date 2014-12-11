@@ -120,8 +120,16 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
 
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
-      VALUE str = rb_str_new(buf, len);
-      rb_enc_associate(str, rb_utf8_encoding());
+
+      VALUE str = rb_funcall(
+        rb_funcall(
+          rb_funcall(
+            rb_funcall(rb_str_new(buf, len),
+              rb_intern("unpack"), 1, rb_str_new2("U*")),
+            rb_intern("pack"), 1, rb_str_new2("S*")),
+          rb_intern("force_encoding"), 1, rb_str_new2("UTF-16LE")),
+        rb_intern("encode"), 1, rb_str_new2("UTF-8"));
+
       return str;
 
     case DUK_TYPE_OBJECT:
@@ -173,7 +181,13 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       return;
 
     case T_STRING:
-      str = rb_str_conv_enc(obj, rb_enc_get(obj), rb_utf8_encoding());
+      str = rb_funcall(
+        rb_funcall(
+          rb_funcall(obj,
+            rb_intern("encode"), 1, rb_str_new2("UTF-16LE")),
+          rb_intern("unpack"), 1, rb_str_new2("S*")),
+        rb_intern("pack"), 1, rb_str_new2("U*"));
+      // str = rb_str_conv_enc(obj, rb_enc_get(obj), rb_utf8_encoding());
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 
