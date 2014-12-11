@@ -10,6 +10,10 @@ class TestDuktape < Minitest::Spec
     @ctx = Duktape::Context.new
   end
 
+  def teardown
+    assert @ctx._valid?, "Context is in a weird state"
+  end
+
   describe "#eval_string" do
     def test_requires_string
       assert_raises(TypeError) do

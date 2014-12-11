@@ -366,6 +366,19 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return res;
 }
 
+// Checks that we are in a fine state
+static VALUE ctx_is_valid(VALUE self)
+{
+  duk_context *ctx;
+  Data_Get_Struct(self, duk_context, ctx);
+
+  if (duk_is_valid_index(ctx, -1)) {
+    return Qfalse;
+  } else {
+    return Qtrue;
+  }
+}
+
 static void error_handler(duk_context *ctx, int code, const char *msg)
 {
   clean_raise(ctx, error_code_class(code), "%s", msg);
@@ -404,6 +417,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "exec_string", ctx_exec_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
+  rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
 
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
