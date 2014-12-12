@@ -111,7 +111,7 @@ static VALUE encode_cesu8(VALUE str)
 
   VALUE res = rb_str_new(0, 0);
 
-  VALUE utf16 = rb_str_conv_enc(str, NULL, utf16enc);
+  VALUE utf16 = rb_str_conv_enc(str, rb_enc_get(str), utf16enc);
 
   long len = RSTRING_LEN(utf16) / 2;
   unsigned short *bytes = (unsigned short *)RSTRING_PTR(utf16);
@@ -141,7 +141,7 @@ static VALUE decode_cesu8(VALUE str)
   }
 
   rb_enc_associate(res, utf16enc);
-  return rb_str_conv_enc(res, NULL, rb_utf8_encoding());
+  return rb_str_conv_enc(res, utf16enc, rb_utf8_encoding());
 }
 
 static VALUE ctx_stack_to_value(duk_context *ctx, int index)
