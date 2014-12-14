@@ -96,6 +96,15 @@ class TestDuktape < Minitest::Spec
 
       assert_equal "invalid base value", err.message
     end
+
+    def test_error_message_not_garbage_collected
+      1000.times do
+        err = assert_raises(Duktape::ReferenceError) do
+          @ctx.eval_string('fail', __FILE__)
+        end
+        assert_equal "identifier 'fail' undefined", err.message
+      end
+    end
   end
 
   describe "#exec_string" do

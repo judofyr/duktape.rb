@@ -27,6 +27,7 @@ static void error_handler(duk_context *, int, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
 #define clean_raise(ctx, ...) (duk_set_top(ctx, 0), rb_raise(__VA_ARGS__))
+#define clean_raise_exc(ctx, ...) (duk_set_top(ctx, 0), rb_exc_raise(__VA_ARGS__))
 
 static void ctx_dealloc(void *ctx)
 {
@@ -231,13 +232,13 @@ static void raise_ctx_error(duk_context *ctx)
 {
   duk_get_prop_string(ctx, -1, "name");
   const char *name = duk_safe_to_string(ctx, -1);
-  duk_pop(ctx);
 
-  duk_get_prop_string(ctx, -1, "message");
+  duk_get_prop_string(ctx, -2, "message");
   const char *message = duk_to_string(ctx, -1);
-  duk_pop(ctx);
 
-  clean_raise(ctx, error_name_class(name), "%s", message);
+  VALUE exc_class = error_name_class(name);
+  VALUE exc = rb_exc_new2(exc_class, message);
+  clean_raise_exc(ctx, exc);
 }
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
