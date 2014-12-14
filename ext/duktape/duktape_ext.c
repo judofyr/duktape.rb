@@ -106,12 +106,15 @@ static VALUE error_name_class(const char* name)
   }
 }
 
-static VALUE encode_cesu8(VALUE str)
+static VALUE encode_cesu8(duk_context *ctx, VALUE str)
 {
 
   VALUE res = rb_str_new(0, 0);
 
   VALUE utf16 = rb_str_conv_enc(str, rb_enc_get(str), utf16enc);
+  if (utf16 == str && rb_enc_get(str) != utf16enc) {
+    clean_raise(ctx, rb_eEncodingError, "cannot convert Ruby string to UTF-16");
+  }
 
   long len = RSTRING_LEN(utf16) / 2;
   unsigned short *bytes = (unsigned short *)RSTRING_PTR(utf16);
@@ -126,7 +129,7 @@ static VALUE encode_cesu8(VALUE str)
   return res;
 }
 
-static VALUE decode_cesu8(VALUE str)
+static VALUE decode_cesu8(duk_context *ctx, VALUE str)
 {
   VALUE res = rb_str_new(0, 0);
 
@@ -135,13 +138,19 @@ static VALUE decode_cesu8(VALUE str)
   long len;
 
   while (ptr < end) {
+    len = (end - ptr);
     unsigned short code = utf8_to_uv(ptr, &len);
     rb_str_buf_cat(res, (char*)&code, 2);
     ptr += len;
   }
 
   rb_enc_associate(res, utf16enc);
-  return rb_str_conv_enc(res, utf16enc, rb_utf8_encoding());
+  VALUE utf8res = rb_str_conv_enc(res, utf16enc, rb_utf8_encoding());
+  if (utf8res == res) {
+    clean_raise(ctx, rb_eEncodingError, "cannot convert JavaScript string to UTF-16");
+  }
+
+  return utf8res;
 }
 
 static VALUE ctx_stack_to_value(duk_context *ctx, int index)
@@ -165,7 +174,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
       VALUE str = rb_str_new(buf, len);
-      return decode_cesu8(str);
+      return decode_cesu8(ctx, str);
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
@@ -220,7 +229,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       return;
 
     case T_STRING:
-      str = encode_cesu8(obj);
+      str = encode_cesu8(ctx, obj);
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 

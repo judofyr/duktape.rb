@@ -360,6 +360,57 @@ class TestDuktape < Minitest::Spec
       assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
       assert_equal 4, @ctx.eval_string("'#{str}'.length", __FILE__)
     end
+
+    def test_invalid_input_data
+      str = "\xde\xad\xbe\xef".force_encoding('UTF-8')
+      assert_raises(EncodingError) do
+        assert_equal str, @ctx.call_prop('id', str)
+      end
+    end
+
+    def test_valid_output_data
+      ranges = [
+        (0x0000..0xD7FF),
+        (0xE000..0xFFFF),
+        (0x010000..0x10FFFF)
+      ]
+
+      # Pick some code points
+      challenge = []
+      n = 10000
+      n.times do
+        challenge << rand(ranges.sample)
+      end
+
+      str = @ctx.eval_string(<<-JS, __FILE__)
+        var res = [];
+        var codepoints = #{challenge.inspect};
+        for (var i = 0; i < codepoints.length; i++) {
+          var codepoint = codepoints[i];
+          if (codepoint > 0xFFFF) {
+            codepoint -= 0x10000;
+            var highSurrogate = (codepoint >> 10) + 0xD800;
+            var lowSurrogate = (codepoint % 0x400) + 0xDC00;
+            res.push(String.fromCharCode(highSurrogate, lowSurrogate));
+          } else {
+            res.push(String.fromCharCode(codepoints[i]));
+          }
+        }
+        res.join("")
+      JS
+
+      str.each_codepoint do |code|
+        assert_equal challenge.shift, code
+      end
+    end
+
+    def test_invalid_output_data
+      assert_raises(EncodingError) do
+        @ctx.eval_string(<<-JS, __FILE__)
+          ({data:String.fromCharCode(0xD800 + 10)})
+        JS
+      end
+    end
   end
 
   describe "ComplexObject instance" do
