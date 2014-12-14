@@ -24,6 +24,8 @@ static VALUE eTypeError;
 static VALUE eURIError;
 static rb_encoding *utf16enc;
 
+static ID id_complex_object;
+
 static void error_handler(duk_context *, int, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
@@ -35,6 +37,8 @@ utf8_to_uv(const char *p, long *lenp);
 
 struct state {
   duk_context *ctx;
+  VALUE complex_object;
+  int was_complex;
 };
 
 static void ctx_dealloc(void *ptr)
@@ -42,6 +46,11 @@ static void ctx_dealloc(void *ptr)
   struct state *state = (struct state *)ptr;
   duk_destroy_heap(state->ctx);
   free(state);
+}
+
+static void ctx_mark(struct state *state)
+{
+  rb_gc_mark(state->complex_object);
 }
 
 static VALUE ctx_alloc(VALUE klass)
@@ -56,7 +65,8 @@ static VALUE ctx_alloc(VALUE klass)
 
   struct state *state = malloc(sizeof(struct state));
   state->ctx = ctx;
-  return Data_Wrap_Struct(klass, NULL, ctx_dealloc, state);
+  state->complex_object = oComplexObject;
+  return Data_Wrap_Struct(klass, ctx_mark, ctx_dealloc, state);
 }
 
 static VALUE error_code_class(int code) {
@@ -170,6 +180,8 @@ static VALUE ctx_stack_to_value(struct state *state, int index)
   const char *buf;
   int type;
 
+  state->was_complex = 0;
+
   type = duk_get_type(ctx, index);
   switch (type) {
     case DUK_TYPE_NULL:
@@ -189,7 +201,8 @@ static VALUE ctx_stack_to_value(struct state *state, int index)
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
-        return oComplexObject;
+        state->was_complex = 1;
+        return state->complex_object;
       } else if (duk_is_array(ctx, index)) {
         VALUE ary = rb_ary_new();
         duk_enum(ctx, index, DUK_ENUM_ARRAY_INDICES_ONLY);
@@ -206,20 +219,21 @@ static VALUE ctx_stack_to_value(struct state *state, int index)
           VALUE key = ctx_stack_to_value(state, -2);
           VALUE val = ctx_stack_to_value(state, -1);
           duk_pop_2(ctx);
-          if (val == oComplexObject)
+          if (state->was_complex)
             continue;
           rb_hash_aset(hash, key, val);
         }
         duk_pop(ctx);
         return hash;
       } else {
-        return oComplexObject;
+        state->was_complex = 1;
+        return state->complex_object;
       }
 
     case DUK_TYPE_BUFFER:
     case DUK_TYPE_POINTER:
     default:
-      return oComplexObject;
+      return state->complex_object;
   }
 
   return Qnil;
@@ -461,9 +475,31 @@ VALUE complex_object_instance(VALUE self)
   return oComplexObject;
 }
 
+static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
+{
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
+
+  VALUE options;
+  rb_scan_args(argc, argv, ":", &options);
+  if (!NIL_P(options))
+    state->complex_object = rb_hash_lookup2(options, ID2SYM(id_complex_object), state->complex_object);
+
+  return Qnil;
+}
+
+static VALUE ctx_complex_object(VALUE self)
+{
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
+
+  return state->complex_object;
+}
+
 void Init_duktape_ext()
 {
   utf16enc = rb_enc_find("UTF-16LE");
+  id_complex_object = rb_intern("complex_object");
 
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
@@ -487,6 +523,8 @@ void Init_duktape_ext()
 
   rb_define_alloc_func(cContext, ctx_alloc);
 
+  rb_define_method(cContext, "initialize", ctx_initialize, -1);
+  rb_define_method(cContext, "complex_object", ctx_complex_object, 0);
   rb_define_method(cContext, "eval_string", ctx_eval_string, 2);
   rb_define_method(cContext, "exec_string", ctx_exec_string, 2);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);

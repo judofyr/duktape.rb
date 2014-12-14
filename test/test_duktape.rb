@@ -7,11 +7,20 @@ require 'duktape'
 
 class TestDuktape < Minitest::Spec
   def setup
-    @ctx = Duktape::Context.new
+    @ctx = Duktape::Context.new(options)
+  end
+
+  def options
+    {}
   end
 
   def teardown
     assert @ctx._valid?, "Context is in a weird state"
+  end
+
+  def test_initialize
+    assert Duktape::Context.new(foo: 123)
+    assert Duktape::Context.new
   end
 
   describe "#eval_string" do
@@ -429,6 +438,36 @@ class TestDuktape < Minitest::Spec
       100.times { Array.new(1000) { " " * 100 } }
       GC.start
       assert Duktape::ComplexObject.instance
+    end
+  end
+
+  describe "custom ComplexObject" do
+    def options
+      super.merge(complex_object: false)
+    end
+
+    def test_complex_object
+      assert_equal false, @ctx.eval_string("(function() {})", __FILE__)
+    end
+
+    def test_hash_complex_object
+      assert_equal Hash.new, @ctx.eval_string("({foo:(function() {})})", __FILE__)
+    end
+
+    def test_array_complex_object
+      assert_equal [1, false], @ctx.eval_string("[1, function() {}]", __FILE__)
+    end
+
+    def test_keeps_other
+      assert_equal({'foo' => false}, @ctx.eval_string("({foo:false})", __FILE__))
+    end
+
+    def test_maintains_reference
+      @ctx = Duktape::Context.new(complex_object: "hello")
+      # Generate some garbage
+      100.times { Array.new(1000) { " " * 100 } }
+      GC.start
+      assert_equal "hello", @ctx.complex_object
     end
   end
 
