@@ -33,9 +33,15 @@ utf8_to_uv(const char *p, long *lenp);
 #define clean_raise(ctx, ...) (duk_set_top(ctx, 0), rb_raise(__VA_ARGS__))
 #define clean_raise_exc(ctx, ...) (duk_set_top(ctx, 0), rb_exc_raise(__VA_ARGS__))
 
-static void ctx_dealloc(void *ctx)
+struct state {
+  duk_context *ctx;
+};
+
+static void ctx_dealloc(void *ptr)
 {
-  duk_destroy_heap((duk_context *)ctx);
+  struct state *state = (struct state *)ptr;
+  duk_destroy_heap(state->ctx);
+  free(state);
 }
 
 static VALUE ctx_alloc(VALUE klass)
@@ -48,7 +54,9 @@ static VALUE ctx_alloc(VALUE klass)
   duk_del_prop(ctx, -2);
   duk_set_top(ctx, 0);
 
-  return Data_Wrap_Struct(klass, NULL, ctx_dealloc, ctx);
+  struct state *state = malloc(sizeof(struct state));
+  state->ctx = ctx;
+  return Data_Wrap_Struct(klass, NULL, ctx_dealloc, state);
 }
 
 static VALUE error_code_class(int code) {
@@ -107,9 +115,9 @@ static VALUE error_name_class(const char* name)
   }
 }
 
-static VALUE encode_cesu8(duk_context *ctx, VALUE str)
+static VALUE encode_cesu8(struct state *state, VALUE str)
 {
-
+  duk_context *ctx = state->ctx;
   VALUE res = rb_str_new(0, 0);
 
   VALUE utf16 = rb_str_conv_enc(str, rb_enc_get(str), utf16enc);
@@ -130,8 +138,9 @@ static VALUE encode_cesu8(duk_context *ctx, VALUE str)
   return res;
 }
 
-static VALUE decode_cesu8(duk_context *ctx, VALUE str)
+static VALUE decode_cesu8(struct state *state, VALUE str)
 {
+  duk_context *ctx = state->ctx;
   VALUE res = rb_str_new(0, 0);
 
   const char *ptr = RSTRING_PTR(str);
@@ -154,8 +163,9 @@ static VALUE decode_cesu8(duk_context *ctx, VALUE str)
   return utf8res;
 }
 
-static VALUE ctx_stack_to_value(duk_context *ctx, int index)
+static VALUE ctx_stack_to_value(struct state *state, int index)
 {
+  duk_context *ctx = state->ctx;
   size_t len;
   const char *buf;
   int type;
@@ -175,7 +185,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
     case DUK_TYPE_STRING:
       buf = duk_get_lstring(ctx, index, &len);
       VALUE str = rb_str_new(buf, len);
-      return decode_cesu8(ctx, str);
+      return decode_cesu8(state, str);
 
     case DUK_TYPE_OBJECT:
       if (duk_is_function(ctx, index)) {
@@ -184,7 +194,7 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
         VALUE ary = rb_ary_new();
         duk_enum(ctx, index, DUK_ENUM_ARRAY_INDICES_ONLY);
         while (duk_next(ctx, -1, 1)) {
-          rb_ary_store(ary, duk_to_int(ctx, -2), ctx_stack_to_value(ctx, -1));
+          rb_ary_store(ary, duk_to_int(ctx, -2), ctx_stack_to_value(state, -1));
           duk_pop_2(ctx);
         }
         duk_pop(ctx);
@@ -193,8 +203,8 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
         VALUE hash = rb_hash_new();
         duk_enum(ctx, index, DUK_ENUM_OWN_PROPERTIES_ONLY);
         while (duk_next(ctx, -1, 1)) {
-          VALUE key = ctx_stack_to_value(ctx, -2);
-          VALUE val = ctx_stack_to_value(ctx, -1);
+          VALUE key = ctx_stack_to_value(state, -2);
+          VALUE val = ctx_stack_to_value(state, -1);
           duk_pop_2(ctx);
           if (val == oComplexObject)
             continue;
@@ -215,8 +225,9 @@ static VALUE ctx_stack_to_value(duk_context *ctx, int index)
   return Qnil;
 }
 
-static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
+static void ctx_push_ruby_object(struct state *state, VALUE obj)
 {
+  duk_context *ctx = state->ctx;
   duk_idx_t arr_idx;
   VALUE str;
 
@@ -230,7 +241,7 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
       return;
 
     case T_STRING:
-      str = encode_cesu8(ctx, obj);
+      str = encode_cesu8(state, obj);
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
       return;
 
@@ -249,14 +260,14 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
     case T_ARRAY:
       arr_idx = duk_push_array(ctx);
       for (int idx = 0; idx < RARRAY_LEN(obj); idx++) {
-        ctx_push_ruby_object(ctx, rb_ary_entry(obj, idx));
+        ctx_push_ruby_object(state, rb_ary_entry(obj, idx));
         duk_put_prop_index(ctx, arr_idx, idx);
       }
       return;
 
     case T_HASH:
       duk_push_object(ctx);
-      rb_hash_foreach(obj, ctx_push_hash_element, (VALUE)ctx);
+      rb_hash_foreach(obj, ctx_push_hash_element, (VALUE)state);
       return;
 
     default:
@@ -269,17 +280,19 @@ static void ctx_push_ruby_object(duk_context *ctx, VALUE obj)
 
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra)
 {
-  duk_context *ctx = (duk_context*) extra;
+  struct state *state = (struct state*) extra;
+  duk_context *ctx = state->ctx;
 
   Check_Type(key, T_STRING);
   duk_push_lstring(ctx, RSTRING_PTR(key), RSTRING_LEN(key));
-  ctx_push_ruby_object(ctx, val);
+  ctx_push_ruby_object(state, val);
   duk_put_prop(ctx, -3);
   return ST_CONTINUE;
 }
 
-static void raise_ctx_error(duk_context *ctx)
+static void raise_ctx_error(struct state *state)
 {
+  duk_context *ctx = state->ctx;
   duk_get_prop_string(ctx, -1, "name");
   const char *name = duk_safe_to_string(ctx, -1);
 
@@ -293,53 +306,55 @@ static void raise_ctx_error(duk_context *ctx)
 
 static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
 {
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
 
   StringValue(source);
   StringValue(filename);
 
-  ctx_push_ruby_object(ctx, source);
-  ctx_push_ruby_object(ctx, filename);
+  ctx_push_ruby_object(state, source);
+  ctx_push_ruby_object(state, filename);
 
-  if (duk_pcompile(ctx, DUK_COMPILE_EVAL) == DUK_EXEC_ERROR) {
-    raise_ctx_error(ctx);
+  if (duk_pcompile(state->ctx, DUK_COMPILE_EVAL) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
   }
 
-  if (duk_pcall(ctx, 0) == DUK_EXEC_ERROR) {
-    raise_ctx_error(ctx);
+  if (duk_pcall(state->ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
   }
 
-  VALUE res = ctx_stack_to_value(ctx, -1);
-  duk_set_top(ctx, 0);
+  VALUE res = ctx_stack_to_value(state, -1);
+  duk_set_top(state->ctx, 0);
   return res;
 }
 
 static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
 {
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
 
   StringValue(source);
   StringValue(filename);
 
-  ctx_push_ruby_object(ctx, source);
-  ctx_push_ruby_object(ctx, filename);
+  ctx_push_ruby_object(state, source);
+  ctx_push_ruby_object(state, filename);
 
-  if (duk_pcompile(ctx, 0) == DUK_EXEC_ERROR) {
-    raise_ctx_error(ctx);
+  if (duk_pcompile(state->ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
   }
 
-  if (duk_pcall(ctx, 0) == DUK_EXEC_ERROR) {
-    raise_ctx_error(ctx);
+  if (duk_pcall(state->ctx, 0) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
   }
 
-  duk_set_top(ctx, 0);
+  duk_set_top(state->ctx, 0);
   return Qnil;
 }
 
-static void ctx_get_one_prop(duk_context *ctx, VALUE name, int strict)
+static void ctx_get_one_prop(struct state *state, VALUE name, int strict)
 {
+  duk_context *ctx = state->ctx;
+
   // Don't allow prop access on undefined/null
   if (duk_check_type_mask(ctx, -1, DUK_TYPE_MASK_UNDEFINED | DUK_TYPE_MASK_NULL)) {
     clean_raise(ctx, eTypeError, "invalid base value");
@@ -354,12 +369,14 @@ static void ctx_get_one_prop(duk_context *ctx, VALUE name, int strict)
   }
 }
 
-static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
+static void ctx_get_nested_prop(struct state *state, VALUE props)
 {
+  duk_context *ctx = state->ctx;
+
   switch (TYPE(props)) {
     case T_STRING:
       duk_push_global_object(ctx);
-      ctx_get_one_prop(ctx, props, 1);
+      ctx_get_one_prop(state, props, 1);
       return;
 
     case T_ARRAY:
@@ -371,7 +388,7 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
         Check_Type(item, T_STRING);
 
         // Only do a strict check on the first item
-        ctx_get_one_prop(ctx, item, i == 0);
+        ctx_get_one_prop(state, item, i == 0);
       }
       return;
 
@@ -383,51 +400,51 @@ static void ctx_get_nested_prop(duk_context *ctx, VALUE props)
 
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
 {
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
 
-  ctx_get_nested_prop(ctx, prop);
+  ctx_get_nested_prop(state, prop);
 
-  VALUE res = ctx_stack_to_value(ctx, -1);
-  duk_set_top(ctx, 0);
+  VALUE res = ctx_stack_to_value(state, -1);
+  duk_set_top(state->ctx, 0);
   return res;
 }
 
 static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 {
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
 
   VALUE prop;
   VALUE *prop_args;
   rb_scan_args(argc, argv, "1*", &prop, &prop_args);
 
-  ctx_get_nested_prop(ctx, prop);
+  ctx_get_nested_prop(state, prop);
 
   // Swap receiver and function
-  duk_swap_top(ctx, -2);
+  duk_swap_top(state->ctx, -2);
 
   // Push arguments
   for (int i = 1; i < argc; i++) {
-    ctx_push_ruby_object(ctx, argv[i]);
+    ctx_push_ruby_object(state, argv[i]);
   }
 
-  if (duk_pcall_method(ctx, (argc - 1)) == DUK_EXEC_ERROR) {
-    raise_ctx_error(ctx);
+  if (duk_pcall_method(state->ctx, (argc - 1)) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
   }
 
-  VALUE res = ctx_stack_to_value(ctx, -1);
-  duk_set_top(ctx, 0);
+  VALUE res = ctx_stack_to_value(state, -1);
+  duk_set_top(state->ctx, 0);
   return res;
 }
 
 // Checks that we are in a fine state
 static VALUE ctx_is_valid(VALUE self)
 {
-  duk_context *ctx;
-  Data_Get_Struct(self, duk_context, ctx);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
 
-  if (duk_is_valid_index(ctx, -1)) {
+  if (duk_is_valid_index(state->ctx, -1)) {
     return Qfalse;
   } else {
     return Qtrue;
