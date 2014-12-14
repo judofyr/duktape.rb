@@ -335,6 +335,11 @@ class TestDuktape < Minitest::Spec
   end
 
   describe "string encoding" do
+    before do
+      @ctx.eval_string('function id(str) { return str }', __FILE__)
+      @ctx.eval_string('function len(str) { return str.length }', __FILE__)
+    end
+
     def test_string_utf8_encoding
       str = @ctx.eval_string('"foo"', __FILE__)
       assert_equal 'foo', str
@@ -342,12 +347,78 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_arguments_are_transcoded_to_utf8
-      @ctx.eval_string('function id(a) { return a }', __FILE__)
       # "foo" as UTF-16LE bytes
       str = "\x66\x00\x6f\x00\x6f\00".force_encoding(Encoding::UTF_16LE)
       str = @ctx.call_prop('id', str)
       assert_equal 'foo', str
       assert_equal Encoding::UTF_8, str.encoding
+    end
+
+    def test_surrogate_pairs
+      # Smiling emoji
+      str = "\u{1f604}".encode("UTF-8")
+      assert_equal str, @ctx.call_prop('id', str)
+      assert_equal 2, @ctx.call_prop('len', str)
+      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
+      assert_equal 2, @ctx.eval_string("'#{str}'.length", __FILE__)
+
+      # US flag emoji
+      str = "\u{1f1fa}\u{1f1f8}".force_encoding("UTF-8")
+      assert_equal str, @ctx.call_prop('id', str)
+      assert_equal 4, @ctx.call_prop('len', str)
+      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
+      assert_equal 4, @ctx.eval_string("'#{str}'.length", __FILE__)
+    end
+
+    def test_invalid_input_data
+      str = "\xde\xad\xbe\xef".force_encoding('UTF-8')
+      assert_raises(EncodingError) do
+        assert_equal str, @ctx.call_prop('id', str)
+      end
+    end
+
+    def test_valid_output_data
+      ranges = [
+        (0x0000..0xD7FF),
+        (0xE000..0xFFFF),
+        (0x010000..0x10FFFF)
+      ]
+
+      # Pick some code points
+      challenge = []
+      n = 10000
+      n.times do
+        challenge << rand(ranges.sample)
+      end
+
+      str = @ctx.eval_string(<<-JS, __FILE__)
+        var res = [];
+        var codepoints = #{challenge.inspect};
+        for (var i = 0; i < codepoints.length; i++) {
+          var codepoint = codepoints[i];
+          if (codepoint > 0xFFFF) {
+            codepoint -= 0x10000;
+            var highSurrogate = (codepoint >> 10) + 0xD800;
+            var lowSurrogate = (codepoint % 0x400) + 0xDC00;
+            res.push(String.fromCharCode(highSurrogate, lowSurrogate));
+          } else {
+            res.push(String.fromCharCode(codepoints[i]));
+          }
+        }
+        res.join("")
+      JS
+
+      str.each_codepoint do |code|
+        assert_equal challenge.shift, code
+      end
+    end
+
+    def test_invalid_output_data
+      assert_raises(EncodingError) do
+        @ctx.eval_string(<<-JS, __FILE__)
+          ({data:String.fromCharCode(0xD800 + 10)})
+        JS
+      end
     end
   end
 
