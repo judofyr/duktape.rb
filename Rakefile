@@ -6,6 +6,7 @@ CLOBBER.include('ext/duktape/duktape.{c,h}')
 $gemspec = Gem::Specification.load('duktape.gemspec')
 
 task :compile => 'ext/duktape/duktape.c'
+task :native => 'ext/duktape/duktape.c'
 
 DUKTAPE_VERSION = Duktape::VERSION.split('.')[0,3].join('.')
 file 'ext/duktape/duktape.c' do
