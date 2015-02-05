@@ -504,6 +504,61 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "Ruby bridge" do
+    def options
+      super.merge(ruby_bridge: true)
+    end
+
+    def test_works
+    end
+
+    def test_has_ruby_module
+      assert_equal 'object', @ctx.eval_string('typeof Ruby', __FILE__)
+    end
+
+    def test_roundtrips_objects
+      @ctx.exec_string("ctx = Ruby.send(Ruby.main, 'eval', ['Duktape::Context.new'])", __FILE__)
+      assert_instance_of Duktape::Context, @ctx.get_prop('ctx')
+    end
+
+    def test_keeps_references
+      @ctx.exec_string(<<-JS, __FILE__)
+        obj = Ruby.send(Ruby.main, "eval", ["Object.new"]);
+      JS
+
+      100.times { Array.new(1000) { " " * 100 } }
+      GC.start
+
+      assert @ctx.get_prop('obj').inspect
+    end
+
+    def create_obj
+      require 'weakref'
+
+      ref = nil
+      proc do
+        obj = Object.new
+        ref = WeakRef.new(obj)
+
+        @ctx.exec_string(<<-JS, __FILE__)
+          function noop() { }
+        JS
+
+        @ctx.call_prop('noop', obj)
+      end.call
+      ref
+    end
+
+    def test_releases_references
+      ref = create_obj
+
+      assert ref.weakref_alive?
+      100.times { Array.new(1000) { " " * 100 } }
+      GC.start
+      refute ref.weakref_alive?, "Object was not garbage collected"
+    end
+  end
+
   ## Previous bugs in Duktape
   describe "previous bugs" do
     def test_tailcall_bug

@@ -25,9 +25,11 @@ static VALUE eURIError;
 static rb_encoding *utf16enc;
 
 static ID id_complex_object;
+static ID id_ruby_bridge;
 
 static void error_handler(duk_context *, int, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
+static duk_ret_t rduk_finalize(duk_context *ctx);
 
 static unsigned long
 utf8_to_uv(const char *p, long *lenp);
@@ -39,18 +41,40 @@ struct state {
   duk_context *ctx;
   VALUE complex_object;
   int was_complex;
+  int has_ruby_bridge;
+  struct obj_ref *objs;
+};
+
+struct obj_ref {
+  VALUE obj;
+  struct state *state;
+  struct obj_ref *prev;
+  struct obj_ref *next;
 };
 
 static void ctx_dealloc(void *ptr)
 {
   struct state *state = (struct state *)ptr;
   duk_destroy_heap(state->ctx);
+
+  struct obj_ref *ref = state->objs;
+  while (ref) {
+    struct obj_ref *next_ref = ref->next;
+    free(ref);
+    ref = next_ref;
+  }
+
   free(state);
 }
 
 static void ctx_mark(struct state *state)
 {
   rb_gc_mark(state->complex_object);
+  struct obj_ref *ref = state->objs;
+  while (ref) {
+    rb_gc_mark(ref->obj);
+    ref = ref->next;
+  }
 }
 
 static VALUE ctx_alloc(VALUE klass)
@@ -66,6 +90,8 @@ static VALUE ctx_alloc(VALUE klass)
   struct state *state = malloc(sizeof(struct state));
   state->ctx = ctx;
   state->complex_object = oComplexObject;
+  state->has_ruby_bridge = 0;
+  state->objs = NULL;
   return Data_Wrap_Struct(klass, ctx_mark, ctx_dealloc, state);
 }
 
@@ -200,6 +226,17 @@ static VALUE ctx_stack_to_value(struct state *state, int index)
       return decode_cesu8(state, str);
 
     case DUK_TYPE_OBJECT:
+      if (state->has_ruby_bridge) {
+        duk_get_prop_string(ctx, index, "\xFFruby");
+        if (duk_is_pointer(ctx, -1)) {
+          struct obj_ref *ref = (struct obj_ref*)duk_get_pointer(ctx, -1);
+          duk_pop(ctx);
+          return ref->obj;
+        }
+
+        duk_pop(ctx);
+      }
+
       if (duk_is_function(ctx, index)) {
         state->was_complex = 1;
         return state->complex_object;
@@ -285,8 +322,26 @@ static void ctx_push_ruby_object(struct state *state, VALUE obj)
       return;
 
     default:
-      // Cannot convert
       break;
+  }
+
+  if (state->has_ruby_bridge) {
+    struct obj_ref *ref = malloc(sizeof(struct obj_ref));
+    ref->obj = obj;
+    ref->state = state;
+    ref->prev = NULL;
+    ref->next = state->objs;
+    if (state->objs) {
+      state->objs->prev = ref;
+    }
+    state->objs = ref;
+
+    duk_push_object(ctx);
+    duk_push_pointer(ctx, ref);
+    duk_put_prop_string(ctx, -2, "\xFFruby");
+    duk_push_c_function(ctx, rduk_finalize, 1);
+    duk_set_finalizer(ctx, -2);
+    return;
   }
 
   clean_raise(ctx, rb_eTypeError, "cannot convert %s", rb_obj_classname(obj));
@@ -424,6 +479,92 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   return res;
 }
 
+static
+duk_ret_t rduk_send(duk_context *ctx)
+{
+  duk_get_prop_string(ctx, 0, "\xFFruby");
+  struct obj_ref *ref = (struct obj_ref*)duk_require_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  VALUE obj = ref->obj;
+  struct state *state = ref->state;
+
+  char *name = duk_require_string(ctx, 1);
+  ID id_name = rb_intern(name);
+
+  VALUE ruby_argv[10];
+
+  int ruby_argc = duk_get_length(ctx, 2);
+  for (int i = 0; i < ruby_argc; i++) {
+    duk_get_prop_index(ctx, 2, i);
+    ruby_argv[i] = ctx_stack_to_value(state, -1);
+    duk_pop(ctx);
+  }
+
+  VALUE res = rb_funcall2(obj, id_name, ruby_argc, ruby_argv);
+
+  ctx_push_ruby_object(state, res);
+  return 1;
+}
+
+static
+duk_ret_t rduk_finalize(duk_context *ctx)
+{
+  duk_get_prop_string(ctx, 0, "\xFFruby");
+  struct obj_ref *ref = (struct obj_ref*)duk_require_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  if (ref->prev == NULL) {
+    ref->state->objs = ref->next;
+  } else {
+    ref->prev->next = ref->next;
+  }
+
+  if (ref->next) {
+    ref->next->prev = ref->prev;
+  }
+}
+
+static
+duk_ret_t rduk_isObject(duk_context *ctx)
+{
+  duk_get_prop_string(ctx, 0, "\xFFruby");
+  if (duk_is_pointer(ctx, -1)) {
+    duk_push_true(ctx);
+  } else {
+    duk_push_false(ctx);
+  }
+  return 1;
+}
+
+static VALUE ctx_enable_ruby_bridge(struct state *state)
+{
+  duk_context *ctx = state->ctx;
+
+  state->has_ruby_bridge = 1;
+
+  duk_push_global_object(ctx);
+
+  duk_push_object(ctx);
+
+  duk_push_c_function(ctx, rduk_send, 3);
+  duk_put_prop_string(ctx, -2, "send");
+
+  duk_push_c_function(ctx, rduk_isObject, 1);
+  duk_put_prop_string(ctx, -2, "isObject");
+
+  VALUE toplevel_binding = rb_const_get(rb_cObject, rb_intern("TOPLEVEL_BINDING"));
+  VALUE main = rb_funcall(toplevel_binding, rb_intern("eval"), 1, rb_str_new_cstr("self"));
+  ctx_push_ruby_object(state, main);
+  duk_put_prop_string(ctx, -2, "main");
+
+  duk_put_prop_string(ctx, -2, "Ruby");
+
+  duk_pop(ctx);
+
+  return Qnil;
+}
+
 static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 {
   struct state *state;
@@ -482,8 +623,12 @@ static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
 
   VALUE options;
   rb_scan_args(argc, argv, ":", &options);
-  if (!NIL_P(options))
+  if (!NIL_P(options)) {
     state->complex_object = rb_hash_lookup2(options, ID2SYM(id_complex_object), state->complex_object);
+    if (RTEST(rb_hash_lookup(options, ID2SYM(id_ruby_bridge)))) {
+      ctx_enable_ruby_bridge(state);
+    }
+  }
 
   return Qnil;
 }
@@ -500,6 +645,7 @@ void Init_duktape_ext()
 {
   utf16enc = rb_enc_find("UTF-16LE");
   id_complex_object = rb_intern("complex_object");
+  id_ruby_bridge = rb_intern("ruby_bridge");
 
   mDuktape = rb_define_module("Duktape");
   cContext = rb_define_class_under(mDuktape, "Context", rb_cObject);
