@@ -24,6 +24,7 @@ static VALUE eTypeError;
 static VALUE eURIError;
 static rb_encoding *utf16enc;
 
+static VALUE sDefaultFilename;
 static ID id_complex_object;
 
 static void error_handler(duk_context *, int, const char *);
@@ -329,7 +330,7 @@ static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
   rb_scan_args(argc, argv, "11", &source, &filename);
 
   if (NIL_P(filename)) {
-    filename = rb_str_new2("(duktape)");
+    filename = sDefaultFilename;
   }
 
   StringValue(source);
@@ -362,7 +363,7 @@ static VALUE ctx_exec_string(int argc, VALUE *argv, VALUE self)
   rb_scan_args(argc, argv, "11", &source, &filename);
 
   if (NIL_P(filename)) {
-    filename = rb_str_new2("(duktape)");
+    filename = sDefaultFilename;
   }
 
   StringValue(source);
@@ -552,6 +553,10 @@ void Init_duktape_ext()
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
   rb_ivar_set(cComplexObject, rb_intern("duktape.instance"), oComplexObject);
+
+  sDefaultFilename = rb_str_new2("(duktape)");
+  OBJ_FREEZE(sDefaultFilename);
+  rb_ivar_set(mDuktape, rb_intern("default_filename"), sDefaultFilename);
 }
 
 
