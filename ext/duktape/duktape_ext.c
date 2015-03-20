@@ -24,6 +24,7 @@ static VALUE eTypeError;
 static VALUE eURIError;
 static rb_encoding *utf16enc;
 
+static VALUE sDefaultFilename;
 static ID id_complex_object;
 
 static void error_handler(duk_context *, int, const char *);
@@ -318,10 +319,19 @@ static void raise_ctx_error(struct state *state)
   clean_raise_exc(ctx, exc);
 }
 
-static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
+static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+
+  VALUE source;
+  VALUE filename;
+
+  rb_scan_args(argc, argv, "11", &source, &filename);
+
+  if (NIL_P(filename)) {
+    filename = sDefaultFilename;
+  }
 
   StringValue(source);
   StringValue(filename);
@@ -342,10 +352,19 @@ static VALUE ctx_eval_string(VALUE self, VALUE source, VALUE filename)
   return res;
 }
 
-static VALUE ctx_exec_string(VALUE self, VALUE source, VALUE filename)
+static VALUE ctx_exec_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+
+  VALUE source;
+  VALUE filename;
+
+  rb_scan_args(argc, argv, "11", &source, &filename);
+
+  if (NIL_P(filename)) {
+    filename = sDefaultFilename;
+  }
 
   StringValue(source);
   StringValue(filename);
@@ -525,8 +544,8 @@ void Init_duktape_ext()
 
   rb_define_method(cContext, "initialize", ctx_initialize, -1);
   rb_define_method(cContext, "complex_object", ctx_complex_object, 0);
-  rb_define_method(cContext, "eval_string", ctx_eval_string, 2);
-  rb_define_method(cContext, "exec_string", ctx_exec_string, 2);
+  rb_define_method(cContext, "eval_string", ctx_eval_string, -1);
+  rb_define_method(cContext, "exec_string", ctx_exec_string, -1);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
   rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
@@ -534,6 +553,10 @@ void Init_duktape_ext()
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);
   rb_ivar_set(cComplexObject, rb_intern("duktape.instance"), oComplexObject);
+
+  sDefaultFilename = rb_str_new2("(duktape)");
+  OBJ_FREEZE(sDefaultFilename);
+  rb_ivar_set(mDuktape, rb_intern("default_filename"), sDefaultFilename);
 }
 
 
@@ -598,5 +621,3 @@ utf8_to_uv(const char *p, long *lenp)
   }
   return uv;
 }
-
-

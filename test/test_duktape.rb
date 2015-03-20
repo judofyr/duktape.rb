@@ -26,8 +26,12 @@ class TestDuktape < Minitest::Spec
   describe "#eval_string" do
     def test_requires_string
       assert_raises(TypeError) do
-        @ctx.eval_string(123, __FILE__)
+        @ctx.eval_string(123)
       end
+    end
+
+    def test_with_filename
+      assert_equal '123', @ctx.eval_string('"123"', __FILE__)
     end
 
     def test_works_with_to_str
@@ -36,47 +40,47 @@ class TestDuktape < Minitest::Spec
         '"123"'
       end
 
-      assert_equal '123', @ctx.eval_string(a, __FILE__)
+      assert_equal '123', @ctx.eval_string(a)
     end
 
     def test_string
-      assert_equal '123', @ctx.eval_string('"123"', __FILE__)
+      assert_equal '123', @ctx.eval_string('"123"')
     end
 
     def test_boolean
-      assert_equal true,  @ctx.eval_string('1 == 1', __FILE__)
-      assert_equal false, @ctx.eval_string('1 == 2', __FILE__)
+      assert_equal true,  @ctx.eval_string('1 == 1')
+      assert_equal false, @ctx.eval_string('1 == 2')
     end
 
     def test_number
-      assert_equal 123.0, @ctx.eval_string('123', __FILE__)
+      assert_equal 123.0, @ctx.eval_string('123')
     end
 
     def test_nil_undef
-      assert_nil @ctx.eval_string('null', __FILE__)
-      assert_nil @ctx.eval_string('undefined', __FILE__)
+      assert_nil @ctx.eval_string('null')
+      assert_nil @ctx.eval_string('undefined')
     end
 
     def test_array
-      assert_equal [1, 2, 3], @ctx.eval_string('[1, 2, 3]', __FILE__)
-      assert_equal [1, [2, 3]], @ctx.eval_string('[1, [2, 3]]', __FILE__)
-      assert_equal [1, [2, [3]]], @ctx.eval_string('[1, [2, [3]]]', __FILE__)
+      assert_equal [1, 2, 3], @ctx.eval_string('[1, 2, 3]')
+      assert_equal [1, [2, 3]], @ctx.eval_string('[1, [2, 3]]')
+      assert_equal [1, [2, [3]]], @ctx.eval_string('[1, [2, [3]]]')
     end
 
     def test_object
-      assert_equal({ "a" => 1, "b" => 2 }, @ctx.eval_string('({a: 1, b: 2})', __FILE__))
-      assert_equal({ "a" => 1, "b" => [2] }, @ctx.eval_string('({a: 1, b: [2]})', __FILE__))
-      assert_equal({ "a" => 1, "b" => { "c" => 2 } }, @ctx.eval_string('({a: 1, b: {c: 2}})', __FILE__))
+      assert_equal({ "a" => 1, "b" => 2 }, @ctx.eval_string('({a: 1, b: 2})'))
+      assert_equal({ "a" => 1, "b" => [2] }, @ctx.eval_string('({a: 1, b: [2]})'))
+      assert_equal({ "a" => 1, "b" => { "c" => 2 } }, @ctx.eval_string('({a: 1, b: {c: 2}})'))
     end
 
     def test_complex_object
       assert_equal Duktape::ComplexObject.instance,
-        @ctx.eval_string('a = function() {}', __FILE__)
+        @ctx.eval_string('a = function() {}')
     end
 
     def test_throw_error
       err = assert_raises(Duktape::Error) do
-        @ctx.eval_string('throw new Error("boom")', __FILE__)
+        @ctx.eval_string('throw new Error("boom")')
       end
 
       assert_equal "boom", err.message
@@ -84,7 +88,7 @@ class TestDuktape < Minitest::Spec
 
     def test_reference_error
       err = assert_raises(Duktape::ReferenceError) do
-        @ctx.eval_string('fail', __FILE__)
+        @ctx.eval_string('fail')
       end
 
       assert_equal "identifier 'fail' undefined", err.message
@@ -92,7 +96,7 @@ class TestDuktape < Minitest::Spec
 
     def test_syntax_error
       err = assert_raises(Duktape::SyntaxError) do
-        @ctx.eval_string('{', __FILE__)
+        @ctx.eval_string('{')
       end
 
       assert_equal "parse error (line 1)", err.message
@@ -100,7 +104,7 @@ class TestDuktape < Minitest::Spec
 
     def test_type_error
       err = assert_raises(Duktape::TypeError) do
-        @ctx.eval_string('null.fail', __FILE__)
+        @ctx.eval_string('null.fail')
       end
 
       assert_equal "invalid base value", err.message
@@ -109,7 +113,7 @@ class TestDuktape < Minitest::Spec
     def test_error_message_not_garbage_collected
       1000.times do
         err = assert_raises(Duktape::ReferenceError) do
-          @ctx.eval_string('fail', __FILE__)
+          @ctx.eval_string('fail')
         end
         assert_equal "identifier 'fail' undefined", err.message
       end
@@ -117,19 +121,24 @@ class TestDuktape < Minitest::Spec
   end
 
   describe "#exec_string" do
-    def test_basic
+    def test_with_filename
       @ctx.exec_string('a = 1', __FILE__)
       assert_equal 1.0, @ctx.eval_string('a', __FILE__)
     end
 
+    def test_basic
+      @ctx.exec_string('a = 1')
+      assert_equal 1.0, @ctx.eval_string('a')
+    end
+
     def test_doesnt_try_convert
-      @ctx.exec_string('a = {b:1}', __FILE__)
-      assert_equal 1.0, @ctx.eval_string('a.b', __FILE__)
+      @ctx.exec_string('a = {b:1}')
+      assert_equal 1.0, @ctx.eval_string('a.b')
     end
 
     def test_throw_error
       err = assert_raises(Duktape::Error) do
-        @ctx.exec_string('throw new Error("boom")', __FILE__)
+        @ctx.exec_string('throw new Error("boom")')
       end
 
       assert_equal "boom", err.message
@@ -137,7 +146,7 @@ class TestDuktape < Minitest::Spec
 
     def test_reference_error
       err = assert_raises(Duktape::ReferenceError) do
-        @ctx.exec_string('fail', __FILE__)
+        @ctx.exec_string('fail')
       end
 
       assert_equal "identifier 'fail' undefined", err.message
@@ -145,7 +154,7 @@ class TestDuktape < Minitest::Spec
 
     def test_syntax_error
       err = assert_raises(Duktape::SyntaxError) do
-        @ctx.exec_string('{', __FILE__)
+        @ctx.exec_string('{')
       end
 
       assert_equal "parse error (line 1)", err.message
@@ -153,7 +162,7 @@ class TestDuktape < Minitest::Spec
 
     def test_type_error
       err = assert_raises(Duktape::TypeError) do
-        @ctx.exec_string('null.fail', __FILE__)
+        @ctx.exec_string('null.fail')
       end
 
       assert_equal 'invalid base value', err.message
@@ -162,17 +171,17 @@ class TestDuktape < Minitest::Spec
 
   describe "#get_prop" do
     def test_basic
-      @ctx.eval_string('a = 1', __FILE__)
+      @ctx.eval_string('a = 1')
       assert_equal 1.0, @ctx.get_prop('a')
     end
 
     def test_nested
-      @ctx.eval_string('a = {}; a.b = {}; a.b.c = 1', __FILE__)
+      @ctx.eval_string('a = {}; a.b = {}; a.b.c = 1')
       assert_equal 1.0, @ctx.get_prop(['a', 'b', 'c'])
     end
 
     def test_nested_undefined
-      @ctx.eval_string('a = {}', __FILE__)
+      @ctx.eval_string('a = {}')
       assert_equal nil, @ctx.get_prop(['a', 'missing'])
     end
 
@@ -193,7 +202,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_type_error
-      @ctx.eval_string('a = {};', __FILE__)
+      @ctx.eval_string('a = {};')
 
       err = assert_raises(Duktape::TypeError) do
         @ctx.get_prop(['a', 'b', 'c'])
@@ -205,7 +214,7 @@ class TestDuktape < Minitest::Spec
 
   describe "#call_prop" do
     before do
-      @ctx.eval_string('function id(a) { return a }', __FILE__)
+      @ctx.eval_string('function id(a) { return a }')
     end
 
     def test_str
@@ -243,12 +252,12 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_hashes_with_complex_values
-      res = @ctx.eval_string('({a:1,b:function(){}})', __FILE__)
+      res = @ctx.eval_string('({a:1,b:function(){}})')
       assert_equal({'a' => 1}, res)
     end
 
     def test_objects_with_prototypes
-      res = @ctx.eval_string <<-JS, __FILE__
+      res = @ctx.eval_string <<-JS
       function A() {
         this.value = 123;
         this.fn = function() {};
@@ -262,7 +271,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_binding
-      @ctx.eval_string <<-JS, __FILE__
+      @ctx.eval_string <<-JS
         var self = this
         function test() { return this === self }
       JS
@@ -270,7 +279,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_property
-      @ctx.eval_string <<-JS, __FILE__
+      @ctx.eval_string <<-JS
         a = {}
         a.b = {}
         a.b.id = function(v) { return v; }
@@ -279,7 +288,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_binding
-      @ctx.eval_string <<-JS, __FILE__
+      @ctx.eval_string <<-JS
         a = {}
         a.b = {}
         a.b.test = function() { return this == a.b; }
@@ -288,10 +297,10 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_throw_error
-      @ctx.eval_string('function fail(msg) { throw new Error(msg) }', __FILE__)
+      @ctx.eval_string('function fail(msg) { throw new Error(msg) }')
 
       err = assert_raises(Duktape::Error) do
-        @ctx.call_prop('fail', 'boom', __FILE__)
+        @ctx.call_prop('fail', 'boom')
       end
 
       assert_equal "boom", err.message
@@ -314,7 +323,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nested_type_error
-      @ctx.eval_string 'a = {}', __FILE__
+      @ctx.eval_string 'a = {}'
 
       err = assert_raises(Duktape::TypeError) do
         @ctx.call_prop(['a', 'missing'])
@@ -345,12 +354,12 @@ class TestDuktape < Minitest::Spec
 
   describe "string encoding" do
     before do
-      @ctx.eval_string('function id(str) { return str }', __FILE__)
-      @ctx.eval_string('function len(str) { return str.length }', __FILE__)
+      @ctx.eval_string('function id(str) { return str }')
+      @ctx.eval_string('function len(str) { return str.length }')
     end
 
     def test_string_utf8_encoding
-      str = @ctx.eval_string('"foo"', __FILE__)
+      str = @ctx.eval_string('"foo"')
       assert_equal 'foo', str
       assert_equal Encoding::UTF_8, str.encoding
     end
@@ -368,15 +377,15 @@ class TestDuktape < Minitest::Spec
       str = "\u{1f604}".encode("UTF-8")
       assert_equal str, @ctx.call_prop('id', str)
       assert_equal 2, @ctx.call_prop('len', str)
-      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
-      assert_equal 2, @ctx.eval_string("'#{str}'.length", __FILE__)
+      assert_equal str, @ctx.eval_string("'#{str}'")
+      assert_equal 2, @ctx.eval_string("'#{str}'.length")
 
       # US flag emoji
       str = "\u{1f1fa}\u{1f1f8}".force_encoding("UTF-8")
       assert_equal str, @ctx.call_prop('id', str)
       assert_equal 4, @ctx.call_prop('len', str)
-      assert_equal str, @ctx.eval_string("'#{str}'", __FILE__)
-      assert_equal 4, @ctx.eval_string("'#{str}'.length", __FILE__)
+      assert_equal str, @ctx.eval_string("'#{str}'")
+      assert_equal 4, @ctx.eval_string("'#{str}'.length")
     end
 
     def test_invalid_input_data
@@ -400,7 +409,7 @@ class TestDuktape < Minitest::Spec
         challenge << rand(ranges.sample)
       end
 
-      str = @ctx.eval_string(<<-JS, __FILE__)
+      str = @ctx.eval_string(<<-JS)
         var res = [];
         var codepoints = #{challenge.inspect};
         for (var i = 0; i < codepoints.length; i++) {
@@ -424,7 +433,7 @@ class TestDuktape < Minitest::Spec
 
     def test_invalid_output_data
       assert_raises(EncodingError) do
-        @ctx.eval_string(<<-JS, __FILE__)
+        @ctx.eval_string(<<-JS)
           ({data:String.fromCharCode(0xD800 + 10)})
         JS
       end
@@ -447,19 +456,19 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_complex_object
-      assert_equal false, @ctx.eval_string("(function() {})", __FILE__)
+      assert_equal false, @ctx.eval_string("(function() {})")
     end
 
     def test_hash_complex_object
-      assert_equal Hash.new, @ctx.eval_string("({foo:(function() {})})", __FILE__)
+      assert_equal Hash.new, @ctx.eval_string("({foo:(function() {})})")
     end
 
     def test_array_complex_object
-      assert_equal [1, false], @ctx.eval_string("[1, function() {}]", __FILE__)
+      assert_equal [1, false], @ctx.eval_string("[1, function() {}]")
     end
 
     def test_keeps_other
-      assert_equal({'foo' => false}, @ctx.eval_string("({foo:false})", __FILE__))
+      assert_equal({'foo' => false}, @ctx.eval_string("({foo:false})"))
     end
 
     def test_maintains_reference
@@ -471,7 +480,23 @@ class TestDuktape < Minitest::Spec
     end
   end
 
-  def test_stacktrace
+  def test_default_stacktrace
+    res = @ctx.eval_string <<-EOF
+      function run() {
+        try {
+          throw new Error;
+        } catch (err) {
+          return err.stack.toString();
+        }
+      }
+
+      run();
+    EOF
+
+    assert_includes res, "(duktape):3"
+  end
+
+  def test_filename_stacktrace
     res = @ctx.eval_string <<-EOF, __FILE__
       function run() {
         try {
@@ -490,17 +515,17 @@ class TestDuktape < Minitest::Spec
   describe "modules" do
     def test_required_undefined
       assert_equal 'undefined',
-        @ctx.eval_string('typeof require', __FILE__)
+        @ctx.eval_string('typeof require')
     end
 
     def test_module_undefined
       assert_equal 'undefined',
-        @ctx.eval_string('typeof module', __FILE__)
+        @ctx.eval_string('typeof module')
     end
 
     def test_exports_undefined
       assert_equal 'undefined',
-        @ctx.eval_string('typeof exports', __FILE__)
+        @ctx.eval_string('typeof exports')
     end
   end
 
@@ -508,7 +533,7 @@ class TestDuktape < Minitest::Spec
   describe "previous bugs" do
     def test_tailcall_bug
       # Tail calls sometimes messes up the parent frame
-      res = @ctx.eval_string <<-EOF, __FILE__
+      res = @ctx.eval_string <<-EOF
         var reduce = function(obj, iterator, memo) {
           return obj.reduce(iterator, memo);
         };
@@ -527,7 +552,7 @@ class TestDuktape < Minitest::Spec
 
     def test_bind_constructor
       # Function.prototype.bind doesn't create constructable functions
-      res = @ctx.eval_string <<-EOF, __FILE__
+      res = @ctx.eval_string <<-EOF
         function Thing(value) {
           this.value = value;
         }
