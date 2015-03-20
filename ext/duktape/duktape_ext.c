@@ -319,6 +319,16 @@ static void raise_ctx_error(struct state *state)
   clean_raise_exc(ctx, exc);
 }
 
+/*
+ * call-seq:
+ *   eval_string(string[, filename]) -> obj
+ *
+ * Evaluate JavaScript expression within context returning the value as a Ruby
+ * object.
+ *
+ *     ctx.eval_string("40 + 2") #=> 42
+ *
+ */
 static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
@@ -352,6 +362,17 @@ static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
   return res;
 }
 
+/*
+ * call-seq:
+ *   exec_string(string[, filename]) -> nil
+ *
+ * Evaluate JavaScript expression within context returning the value as a Ruby
+ * object.
+ *
+ *     ctx.exec_string("var foo = 42")
+ *     ctx.eval_string("foo") #=> 42
+ *
+ */
 static VALUE ctx_exec_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
@@ -431,6 +452,20 @@ static void ctx_get_nested_prop(struct state *state, VALUE props)
   }
 }
 
+/*
+ * call-seq:
+ *   get_prop(name) -> obj
+ *   get_prop([names,...]) -> obj
+ *
+ * Access the property of the global object. An Array of names can be given
+ * to access the property on a nested object.
+ *
+ *     ctx.exec_string("var n = 42", "foo.js")
+ *     ctx.get_prop("n") #=> 42
+ *
+ *     ctx.get_prop(["Math", "PI"]) #=> 3.14
+ *
+ */
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
 {
   struct state *state;
@@ -443,6 +478,19 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
   return res;
 }
 
+
+/*
+ * call-seq:
+ *   call_prop(name, params,...) -> obj
+ *   call_prop([names,...], params,...) -> obj
+ *
+ * Call a function defined in the global scope with the given parameters. An
+ * Array of names can be given to call a function on a nested object.
+ *
+ *     ctx.call_prop("parseInt", "42")       #=> 42
+ *     ctx.call_prop(["Math", "pow"], 2, 10) #=> 1024
+ *
+ */
 static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 {
   struct state *state;
@@ -471,7 +519,11 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return res;
 }
 
-// Checks that we are in a fine state
+/*
+ * :nodoc:
+ *
+ * Checks that we are in a fine state
+ */
 static VALUE ctx_is_valid(VALUE self)
 {
   struct state *state;
@@ -494,6 +546,14 @@ VALUE complex_object_instance(VALUE self)
   return oComplexObject;
 }
 
+/*
+ * call-seq:
+ *   Context.new
+ *   Context.new(complex_object: obj)
+ *
+ * Returns a new JavaScript evaluation context.
+ *
+ */
 static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
@@ -507,6 +567,17 @@ static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
   return Qnil;
 }
 
+/*
+ * call-seq:
+ *   complex_object -> obj
+ *
+ * Returns the default complex object, the value that would be returned if a
+ * JavaScript object had no representation in Ruby, such as a JavaScript
+ * Function. See also Context::new.
+ *
+ *     ctx.complex_object #=> #<Duktape::ComplexObject>
+ *
+ */
 static VALUE ctx_complex_object(VALUE self)
 {
   struct state *state;
