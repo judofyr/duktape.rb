@@ -556,7 +556,7 @@ void Init_duktape_ext()
 
   sDefaultFilename = rb_str_new2("(duktape)");
   OBJ_FREEZE(sDefaultFilename);
-  rb_ivar_set(mDuktape, rb_intern("default_filename"), sDefaultFilename);
+  rb_global_variable(&sDefaultFilename);
 }
 
 
