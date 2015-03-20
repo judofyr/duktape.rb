@@ -455,11 +455,15 @@ static void ctx_get_nested_prop(struct state *state, VALUE props)
 /*
  * call-seq:
  *   get_prop(name) -> obj
+ *   get_prop([names,...]) -> obj
  *
- * Access the property of the global object.
+ * Access the property of the global object. An Array of names can be given
+ * to access the property on a nested object.
  *
  *     ctx.exec_string("var n = 42", "foo.js")
  *     ctx.get_prop("n") #=> 42
+ *
+ *     ctx.get_prop(["Math", "PI"]) #=> 3.14
  *
  */
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
