@@ -1,15 +1,10 @@
 require 'bundler/setup'
 require 'rake/extensiontask'
 
-CLOBBER.include('ext/duktape/duktape.{c,h}')
-
 $gemspec = Gem::Specification.load('duktape.gemspec')
 
-task :compile => 'ext/duktape/duktape.c'
-task :native => 'ext/duktape/duktape.c'
-
 DUKTAPE_VERSION = Duktape::VERSION.split('.')[0,3].join('.')
-file 'ext/duktape/duktape.c' do
+task :update_duktape do
   url = "http://duktape.org/duktape-#{DUKTAPE_VERSION}.tar.xz"
   mkdir_p "tmp"
   chdir "tmp" do
@@ -33,4 +28,3 @@ task :test => :compile do
 end
 
 task :default => :test
-
