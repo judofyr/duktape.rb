@@ -3,7 +3,7 @@ require File.expand_path("../lib/duktape/version", __FILE__)
 Gem::Specification.new do |s|
   s.name        = "duktape"
   s.version     = Duktape::VERSION
-  s.date        = "2014-01-11"
+  s.date        = "2015-04-06"
   s.summary     = "Bindings to the Duktape JavaScript interpreter"
   
   s.author      = "Magnus Holm"
