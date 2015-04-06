@@ -1,6 +1,14 @@
 # ChangeLog
 
-## v1.0.2.1 (Not released yet)
+## v1.1.2.0 (2015-04-06)
+
+* Upgrade to Duktape v1.1.2 (josh)
+* Bundle duktape.{c,h} in the Git repo (josh)
+* Add more documentation (josh)
+* Add default filename (josh)
+* Support encodings properly
+
+## v1.0.2.1 (never released)
 
 * Add error subclasses for the various Duktape errors
 * Return instance of ComplexObject for complex objects
