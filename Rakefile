@@ -1,5 +1,7 @@
 require 'bundler/setup'
 require 'rake/extensiontask'
+require 'rdoc/task'
+require 'sdoc'
 
 $gemspec = Gem::Specification.load('duktape.gemspec')
 
@@ -21,6 +23,13 @@ Rake::ExtensionTask.new do |ext|
 end
 
 Gem::PackageTask.new($gemspec) do |pkg|
+end
+
+RDoc::Task.new(:docs) do |rd|
+  rd.main = "README.md"
+  rd.rdoc_files.include("README.md", "ext/duktape/duktape_ext.c")
+  rd.options << '--fmt' << 'sdoc'
+  rd.rdoc_dir = 'docs'
 end
 
 task :test => :compile do
