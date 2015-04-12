@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.2.1.0 (2015-04-12)
+
+* Upgrade to Duktape v1.2.1 (josh)
+
 ## v1.1.2.0 (2015-04-06)
 
 * Upgrade to Duktape v1.1.2 (josh)
