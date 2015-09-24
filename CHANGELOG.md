@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.3.0.1 (2015-09-24)
+
+* Actually make the gem compile
+
 ## v1.3.0.0 (2015-09-24)
 
 * Upgrade to Duktape v1.3.0
