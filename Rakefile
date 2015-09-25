@@ -1,4 +1,5 @@
 require 'bundler/setup'
+require 'bundler/gem_tasks'
 require 'rake/extensiontask'
 require 'rdoc/task'
 require 'sdoc'
@@ -20,9 +21,6 @@ Rake::ExtensionTask.new do |ext|
   ext.name = :duktape_ext
   ext.ext_dir = 'ext/duktape'
   ext.gem_spec = $gemspec
-end
-
-Gem::PackageTask.new($gemspec) do |pkg|
 end
 
 RDoc::Task.new(:docs) do |rd|
