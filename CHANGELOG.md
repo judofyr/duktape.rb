@@ -1,6 +1,6 @@
 # ChangeLog
 
-## master (not released yet)
+## v1.3.0.3 (2015-09-25)
 
 * Support for big-endian platforms (#30, nanaya)
 
