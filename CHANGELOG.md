@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.3.0.2 (2015-09-25)
+
+* Include all required files in the gem (#29, dapi)
+
 ## v1.3.0.1 (2015-09-24)
 
 * Actually make the gem compile
