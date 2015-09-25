@@ -3,6 +3,7 @@ CHANGELOG.md
 ext/duktape/duktape.c
 ext/duktape/duktape.h
 ext/duktape/duktape_ext.c
+ext/duktape/duk_config.h
 ext/duktape/extconf.rb
 lib/duktape/version.rb
 lib/duktape.rb
