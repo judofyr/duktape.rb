@@ -1,5 +1,9 @@
 # ChangeLog
 
+## master (not released yet)
+
+* Support for big-endian platforms (#30, nanaya)
+
 ## v1.3.0.2 (2015-09-25)
 
 * Include all required files in the gem (#29, dapi)

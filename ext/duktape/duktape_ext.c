@@ -588,7 +588,12 @@ static VALUE ctx_complex_object(VALUE self)
 
 void Init_duktape_ext()
 {
-  utf16enc = rb_enc_find("UTF-16LE");
+  int one = 1;
+  if (*(char*)(&one) == 1) {
+    utf16enc = rb_enc_find("UTF-16LE");
+  } else {
+    utf16enc = rb_enc_find("UTF-16BE");
+  }
   id_complex_object = rb_intern("complex_object");
 
   mDuktape = rb_define_module("Duktape");
