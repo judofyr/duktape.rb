@@ -7,7 +7,7 @@ gem 'rake-compiler'
 gem 'sdoc'
 
 group :development do
-  gem 'aws-sdk', '~> 2.2.0'
+  gem 'aws-sdk', '2.2.1'
 end
 
 group :test do
