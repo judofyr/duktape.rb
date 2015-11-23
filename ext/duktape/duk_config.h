@@ -259,6 +259,11 @@ static __inline__ unsigned long long duk_rdtsc(void) {
 #define DUK_F_TINSPIRE
 #endif
 
+/* illumos / Solaris */
+#if defined(__sun) && defined(__SVR4)
+#define DUK_F_SUN
+#endif
+
 /* GCC and GCC version convenience define. */
 #if defined(__GNUC__)
 #define DUK_F_GCC
@@ -557,6 +562,18 @@ static __inline__ unsigned long long duk_rdtsc(void) {
 #include <sys/time.h>
 #include <time.h>
 #else
+#elif defined(DUK_F_SUN)
+#define DUK_USE_DATE_NOW_GETTIMEOFDAY
+#define DUK_USE_DATE_TZO_GMTIME_R
+#define DUK_USE_DATE_PRS_STRPTIME
+#define DUK_USE_DATE_FMT_STRFTIME
+#include <sys/types.h>
+#include <ast/endian.h>
+#define _BIG_ENDIAN __BIG_ENDIAN
+#include <limits.h>
+#include <sys/param.h>
+#include <sys/time.h>
+#include <time.h>
 /* Other UNIX, hopefully others */
 #define DUK_USE_DATE_NOW_GETTIMEOFDAY
 #define DUK_USE_DATE_TZO_GMTIME_R
