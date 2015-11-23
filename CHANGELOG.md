@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.3.0.4 (2015-11-23)
+
+* Support Illumos and Solaris (#33, F4S4K4N)
+
 ## v1.3.0.3 (2015-09-25)
 
 * Support for big-endian platforms (#30, nanaya)
