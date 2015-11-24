@@ -254,6 +254,11 @@ static __inline__ unsigned long long duk_rdtsc(void) {
 #define DUK_F_QNX
 #endif
 
+/* illumos / Solaris */
+#if defined(__sun) && defined(__SVR4)
+#define DUK_F_SUN
+#endif
+
 /* TI-Nspire (using Ndless) */
 #if defined(_TINSPIRE)
 #define DUK_F_TINSPIRE
@@ -552,6 +557,18 @@ static __inline__ unsigned long long duk_rdtsc(void) {
 #define DUK_USE_DATE_FMT_STRFTIME
 #include <sys/types.h>
 #include <endian.h>
+#include <limits.h>
+#include <sys/param.h>
+#include <sys/time.h>
+#include <time.h>
+#elif defined(DUK_F_SUN)
+#define DUK_USE_DATE_NOW_GETTIMEOFDAY
+#define DUK_USE_DATE_TZO_GMTIME_R
+#define DUK_USE_DATE_PRS_STRPTIME
+#define DUK_USE_DATE_FMT_STRFTIME
+#include <sys/types.h>
+#include <ast/endian.h>
+#define _BIG_ENDIAN __BIG_ENDIAN
 #include <limits.h>
 #include <sys/param.h>
 #include <sys/time.h>
