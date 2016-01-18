@@ -54,3 +54,17 @@ task :upload do
   end
 end
 
+task :fatlinux => :build do |t, args|
+  platform = "x86_64-linux"
+  commit = `git rev-parse HEAD`.strip
+  version = Duktape::VERSION
+
+  paths = ["pkg/duktape-#{version}.gem"]
+
+  %w[1.9 2.0 2.1 2.2 2.3].each do |ruby_version|
+    paths << "https://holmium.s3-eu-west-1.amazonaws.com/duktape-gem/duktape-#{version}-#{platform}.ruby#{ruby_version}.sha#{commit}.gem"
+  end
+
+  sh "fatgem", *paths
+end
+
