@@ -256,7 +256,11 @@ static void ctx_push_ruby_object(struct state *state, VALUE obj)
       return;
 
     case T_SYMBOL:
+#ifdef HAVE_RB_SYM2STR
       obj = rb_sym2str(obj);
+#else
+      obj = rb_id2name(SYM2ID(obj));
+#endif
       // Intentional fall-through:
 
     case T_STRING:
