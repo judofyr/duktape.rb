@@ -1,6 +1,6 @@
 # ChangeLog
 
-## master
+## v1.3.0.5 (2016-01-22)
 
 * Convert symbols to strings (judofyr, Jean-Baptiste Aviat)
 
