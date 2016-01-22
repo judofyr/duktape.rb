@@ -7,5 +7,3 @@ rvm:
   - 2.1.8
   - 2.2.4
   - 2.3.0
-after_script: bundle exec rake native gem upload
-
