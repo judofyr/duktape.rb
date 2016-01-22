@@ -1,5 +1,9 @@
 # ChangeLog
 
+## master
+
+* Convert symbols to strings (judofyr, Jean-Baptiste Aviat)
+
 ## v1.3.0.4 (2015-11-23)
 
 * Support Illumos and Solaris (#33, F4S4K4N)

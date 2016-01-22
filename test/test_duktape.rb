@@ -221,6 +221,10 @@ class TestDuktape < Minitest::Spec
       assert_equal 'Hei', @ctx.call_prop('id', 'Hei')
     end
 
+    def test_symbols
+      assert_equal "hello", @ctx.call_prop('id', :hello)
+    end
+
     def test_fixnum
       assert_equal 2.0, @ctx.call_prop('id', 2)
     end
@@ -249,6 +253,20 @@ class TestDuktape < Minitest::Spec
     def test_hashes
       assert_equal({'hello' => 123}, @ctx.call_prop('id', {'hello' => 123}))
       assert_equal({'hello' => [{'foo' => 123}]}, @ctx.call_prop('id', {'hello' => [{'foo' => 123}]}))
+    end
+
+    def test_hashes_with_symbol_key
+      assert_equal({'hello' => 123}, @ctx.call_prop('id', {:hello => 123}))
+    end
+
+    def test_hashes_with_complex_entries
+      assert_raises TypeError do
+        @ctx.call_prop('id', {:hello => Object.new})
+      end
+
+      assert_raises TypeError do
+        @ctx.call_prop('id', {123 => "hello"})
+      end
     end
 
     def test_hashes_with_complex_values

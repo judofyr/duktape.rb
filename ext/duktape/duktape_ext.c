@@ -255,6 +255,10 @@ static void ctx_push_ruby_object(struct state *state, VALUE obj)
       duk_push_number(ctx, NUM2DBL(obj));
       return;
 
+    case T_SYMBOL:
+      obj = rb_sym2str(obj);
+      // Intentional fall-through:
+
     case T_STRING:
       str = encode_cesu8(state, obj);
       duk_push_lstring(ctx, RSTRING_PTR(str), RSTRING_LEN(str));
@@ -298,8 +302,15 @@ static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra)
   struct state *state = (struct state*) extra;
   duk_context *ctx = state->ctx;
 
-  Check_Type(key, T_STRING);
-  duk_push_lstring(ctx, RSTRING_PTR(key), RSTRING_LEN(key));
+  switch (TYPE(key)) {
+    case T_SYMBOL:
+    case T_STRING:
+      ctx_push_ruby_object(state, key);
+      break;
+    default:
+      clean_raise(ctx, rb_eTypeError, "invalid key type %s", rb_obj_classname(key));
+  }
+
   ctx_push_ruby_object(state, val);
   duk_put_prop(ctx, -3);
   return ST_CONTINUE;
