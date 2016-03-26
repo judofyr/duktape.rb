@@ -370,6 +370,81 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "#define_function" do
+    def test_require_name
+      err = assert_raises(ArgumentError) do
+        @ctx.define_function
+      end
+    end
+
+    def test_require_block
+      err = assert_raises(ArgumentError) do
+        @ctx.define_function("hello")
+      end
+    end
+
+    def test_initial_definition
+      @ctx.define_function "hello" do |a, b|
+        a + b
+      end
+      assert_equal 3, @ctx.eval_string("hello(1, 2)", __FILE__)
+    end
+
+    def test_without_arguments
+      @ctx.define_function("hello") { 'hello' }
+      assert_equal "hello world", @ctx.eval_string("hello() + ' world'", __FILE__)
+    end
+
+    def test_with_arguments
+      @ctx.define_function("square") { |x| x * x }
+      assert_equal 4, @ctx.eval_string("square(2)", __FILE__)
+    end
+
+    def test_with_2_functions
+      @ctx.define_function("square") { |x| x * x }
+      @ctx.define_function("inc") { |x| x + 1 }
+      assert_equal 5, @ctx.eval_string("inc(square(2))", __FILE__)
+    end
+
+    def test_call_prop
+      @ctx.define_function("square") { |x| x * x }
+      @ctx.define_function("inc") { |x| x + 1 }
+      @ctx.eval_string('function math(a) { return square(inc(a)) }')
+      assert_equal 9, @ctx.call_prop('math', 2)
+    end
+
+    def test_respects_complex_object
+      val = :default
+      @ctx.define_function("t") { |v| val = v; nil }
+      @ctx.exec_string("t(function() { })", __FILE__)
+
+      assert_equal @ctx.complex_object, val
+    end
+
+    def test_respects_custom_complex_object
+      @ctx = Duktape::Context.new(complex_object: nil)
+
+      val = :default
+      @ctx.define_function("t") { |v| val = v; nil }
+      @ctx.exec_string("t(function() { })", __FILE__)
+
+      assert_equal @ctx.complex_object, val
+    end
+
+    def test_is_safe
+      @ctx.define_function("id") { |x| x }
+
+      res = @ctx.eval_string <<-EOF, __FILE__
+        id.state = null
+        id.block = null
+        id("123")
+      EOF
+
+      assert_equal "123", res
+    end
+  end
+
+
   describe "string encoding" do
     before do
       @ctx.eval_string('function id(str) { return str }')
