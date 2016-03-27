@@ -1,0 +1,23 @@
+---
+version: "{build}"
+clone_depth: 10
+install:
+  - SET PATH=C:\Ruby%ruby_version%\bin;%PATH%
+  - SET PATH=C:\MinGW\bin;%PATH%
+  - SET RAKEOPT=-rdevkit
+  - ruby --version
+  - gem --version
+  - gem install bundler --quiet --no-ri --no-rdoc
+  - bundler --version
+  - bundle install
+build_script:
+  - rake native gem
+test_script:
+  - rake test
+artifacts:
+  - path: pkg\*.gem
+
+environment:
+  matrix:
+    - ruby_version: "22"
+    - ruby_version: "22-x64"
