@@ -40,6 +40,7 @@ struct state {
   duk_context *ctx;
   VALUE complex_object;
   int was_complex;
+  VALUE blocks;
 };
 
 static void ctx_dealloc(void *ptr)
@@ -52,6 +53,7 @@ static void ctx_dealloc(void *ptr)
 static void ctx_mark(struct state *state)
 {
   rb_gc_mark(state->complex_object);
+  rb_gc_mark(state->blocks);
 }
 
 static VALUE ctx_alloc(VALUE klass)
@@ -67,6 +69,7 @@ static VALUE ctx_alloc(VALUE klass)
   struct state *state = malloc(sizeof(struct state));
   state->ctx = ctx;
   state->complex_object = oComplexObject;
+  state->blocks = rb_ary_new();
   return Data_Wrap_Struct(klass, ctx_mark, ctx_dealloc, state);
 }
 
@@ -534,6 +537,80 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   return res;
 }
 
+static duk_ret_t ctx_call_pushed_function(duk_context *ctx) {
+  VALUE block; // the block to yield
+  struct state *state;
+  int nargs = duk_get_top(ctx); // number of arguments of the block (arity)
+  VALUE args = rb_ary_new(); // the block to yield needs an array of arguments
+  VALUE result; // the result returned by yielding the block
+
+  duk_push_current_function(ctx);
+
+  // get the block which is a property of the pushed function
+  duk_get_prop_string(ctx, -1, "block");
+  block = (VALUE) duk_get_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  // get the state so that we don't need to a create a new one
+  duk_get_prop_string(ctx, -1, "state");
+  state = (struct state *) duk_get_pointer(ctx, -1);
+  duk_pop(ctx);
+
+  // before pushing each argument to the array, each one needs to be converted into a ruby value
+  for (int i = 0; i < nargs; i++)
+    rb_ary_push(args, ctx_stack_to_value(state, i));
+
+  result = rb_proc_call(block, args); // yield
+  ctx_push_ruby_object(state, result);
+
+  return 1;
+}
+
+/*
+ * call-seq:
+ *   ctx_define_function(name, &block) -> nil
+ *
+ * Define a function defined in the global scope and identified by a name.
+ *
+ *     ctx.ctx_define_function("hello_world") { |ctx| 'Hello world' } #=> nil
+ *
+ */
+static VALUE ctx_define_function(VALUE self, VALUE prop)
+{
+  VALUE block;
+  struct state *state;
+  duk_context *ctx;
+
+  // a block is required
+  if (!rb_block_given_p())
+    rb_raise(rb_eArgError, "Expected block");
+
+  // get the context
+  Data_Get_Struct(self, struct state, state);
+  ctx = state->ctx;
+
+  // the c function is available in the global scope
+  duk_push_global_object(ctx);
+
+  duk_push_c_function(ctx, ctx_call_pushed_function, DUK_VARARGS);
+
+  block = rb_block_proc();
+  rb_ary_push(state->blocks, block); // block will be properly garbage collected
+
+  // both block and state are required by the pushed function
+  duk_push_string(ctx, "block");
+  duk_push_pointer(ctx, (void *) block);
+  duk_def_prop(ctx, -3,  DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_HAVE_WRITABLE | 0);
+
+  duk_push_string(ctx, "state");
+  duk_push_pointer(ctx, (void *) state);
+  duk_def_prop(ctx, -3,  DUK_DEFPROP_HAVE_VALUE | DUK_DEFPROP_HAVE_WRITABLE | 0);
+
+  duk_put_prop_string(ctx, -2, StringValueCStr(prop));
+
+  return Qnil;
+}
+
 /*
  * :nodoc:
  *
@@ -639,6 +716,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "exec_string", ctx_exec_string, -1);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
+  rb_define_method(cContext, "define_function", ctx_define_function, 1);
   rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
 
   oComplexObject = rb_obj_alloc(cComplexObject);
