@@ -1,6 +1,6 @@
 # ChangeLog
 
-## master
+## v1.3.0.6 (2016-03-27)
 
 * Implement `#define_function` (#16, judofyr, did)
 
