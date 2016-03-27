@@ -442,6 +442,16 @@ class TestDuktape < Minitest::Spec
 
       assert_equal "123", res
     end
+    
+    def test_readme_example
+      @ctx.define_function("leftpad") do |str, n, ch=' '|
+        str.rjust(n, ch)
+      end
+
+      assert_equal "  foo", @ctx.eval_string("leftpad('foo', 5)")
+      assert_equal "foobar", @ctx.eval_string("leftpad('foobar', 6)")
+      assert_equal "01", @ctx.eval_string("leftpad('1', 2, '0')")
+    end
   end
 
 

@@ -52,6 +52,17 @@ ctx.call_prop('process', 'some data', a: 1, b: 2)
 - `call_prop`   - Call a defined function with the given parameters and return
                   the value as a Ruby Object.
 
+### Defining functions
+
+You can define simple functions in Ruby that can be called from
+JavaScript:
+
+```ruby
+ctx.define_function("leftpad") do |str, n, ch=' '|
+  str.rjust(n, ch)
+end
+```
+
 ### Exceptions
 
 Executing JS may raise two classes of errors: `Duktape::Error` and
