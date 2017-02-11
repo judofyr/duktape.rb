@@ -107,7 +107,7 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('null.fail')
       end
 
-      assert_equal "invalid base value", err.message
+      assert_equal "cannot read property 'fail' of null", err.message
     end
 
     def test_error_message_not_garbage_collected
@@ -165,7 +165,7 @@ class TestDuktape < Minitest::Spec
         @ctx.exec_string('null.fail')
       end
 
-      assert_equal 'invalid base value', err.message
+      assert_equal "cannot read property 'fail' of null", err.message
     end
   end
 
@@ -347,7 +347,7 @@ class TestDuktape < Minitest::Spec
         @ctx.call_prop(['a', 'missing'])
       end
 
-      assert_equal 'not callable', err.message
+      assert_equal 'undefined not callable', err.message
     end
 
     def test_unknown_argument_type
@@ -442,7 +442,7 @@ class TestDuktape < Minitest::Spec
 
       assert_equal "123", res
     end
-    
+
     def test_readme_example
       @ctx.define_function("leftpad") do |str, n, ch=' '|
         str.rjust(n, ch)
