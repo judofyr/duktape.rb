@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.6.1.0 (2017-02-11)
+
+* Upgrade to Duktape v1.6.1 (did)
+
 ## v1.3.0.6 (2016-03-27)
 
 * Implement `#define_function` (#16, judofyr, did)
