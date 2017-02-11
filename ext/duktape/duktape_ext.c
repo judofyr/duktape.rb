@@ -27,7 +27,7 @@ static rb_encoding *utf16enc;
 static VALUE sDefaultFilename;
 static ID id_complex_object;
 
-static void error_handler(duk_context *, int, const char *);
+static void error_handler(duk_context *, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
 static unsigned long
@@ -58,7 +58,13 @@ static void ctx_mark(struct state *state)
 
 static VALUE ctx_alloc(VALUE klass)
 {
-  duk_context *ctx = duk_create_heap(NULL, NULL, NULL, NULL, error_handler);
+  struct state *state = malloc(sizeof(struct state));
+
+  duk_context *ctx = duk_create_heap(NULL, NULL, NULL, state, error_handler);
+
+  state->ctx = ctx;
+  state->complex_object = oComplexObject;
+  state->blocks = rb_ary_new();
 
   // Undefine require property
   duk_push_global_object(ctx);
@@ -66,48 +72,7 @@ static VALUE ctx_alloc(VALUE klass)
   duk_del_prop(ctx, -2);
   duk_set_top(ctx, 0);
 
-  struct state *state = malloc(sizeof(struct state));
-  state->ctx = ctx;
-  state->complex_object = oComplexObject;
-  state->blocks = rb_ary_new();
   return Data_Wrap_Struct(klass, ctx_mark, ctx_dealloc, state);
-}
-
-static VALUE error_code_class(int code) {
-  switch (code) {
-    case DUK_ERR_UNIMPLEMENTED_ERROR:
-      return eUnimplementedError;
-    case DUK_ERR_UNSUPPORTED_ERROR:
-      return eUnsupportedError;
-    case DUK_ERR_INTERNAL_ERROR:
-      return eInternalError;
-    case DUK_ERR_ALLOC_ERROR:
-      return eAllocError;
-    case DUK_ERR_ASSERTION_ERROR:
-      return eAssertionError;
-    case DUK_ERR_API_ERROR:
-      return eAPIError;
-    case DUK_ERR_UNCAUGHT_ERROR:
-      return eUncaughtError;
-
-    case DUK_ERR_ERROR:
-      return eError;
-    case DUK_ERR_EVAL_ERROR:
-      return eEvalError;
-    case DUK_ERR_RANGE_ERROR:
-      return eRangeError;
-    case DUK_ERR_REFERENCE_ERROR:
-      return eReferenceError;
-    case DUK_ERR_SYNTAX_ERROR:
-      return eSyntaxError;
-    case DUK_ERR_TYPE_ERROR:
-      return eTypeError;
-    case DUK_ERR_URI_ERROR:
-      return eURIError;
-
-    default:
-      return eInternalError;
-  }
 }
 
 static VALUE error_name_class(const char* name)
@@ -628,9 +593,9 @@ static VALUE ctx_is_valid(VALUE self)
   }
 }
 
-static void error_handler(duk_context *ctx, int code, const char *msg)
+static void error_handler(duk_context *ctx, const char *msg)
 {
-  clean_raise(ctx, error_code_class(code), "%s", msg);
+  clean_raise(ctx, eInternalError, "%s", msg);
 }
 
 VALUE complex_object_instance(VALUE self)
