@@ -13,7 +13,7 @@ task :update_duktape do
   chdir "tmp" do
     sh "curl", "-O", url
     sh "tar", "xf", "duktape-#{DUKTAPE_VERSION}.tar.xz"
-    cp FileList["duktape-#{DUKTAPE_VERSION}/src/*"], '../ext/duktape'
+    cp FileList["duktape-#{DUKTAPE_VERSION}/src/duktape*"], '../ext/duktape'
   end
 end
 
