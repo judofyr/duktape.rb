@@ -182,7 +182,7 @@ class TestDuktape < Minitest::Spec
 
     def test_nested_undefined
       @ctx.eval_string('a = {}')
-      assert_equal nil, @ctx.get_prop(['a', 'missing'])
+      assert_nil @ctx.get_prop(['a', 'missing'])
     end
 
     def test_missing
@@ -242,7 +242,7 @@ class TestDuktape < Minitest::Spec
     end
 
     def test_nil
-      assert_equal nil, @ctx.call_prop('id', nil)
+      assert_nil @ctx.call_prop('id', nil)
     end
 
     def test_arrays
@@ -428,7 +428,7 @@ class TestDuktape < Minitest::Spec
       @ctx.define_function("t") { |v| val = v; nil }
       @ctx.exec_string("t(function() { })", __FILE__)
 
-      assert_equal @ctx.complex_object, val
+      assert_nil val
     end
 
     def test_is_safe
