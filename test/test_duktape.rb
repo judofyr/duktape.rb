@@ -712,5 +712,9 @@ class TestDuktape < Minitest::Spec
       assert_equal "function foo(bar){return bar}",
         ctx.call_prop(["uglify"], "function foo(bar) {\n  return bar;\n}")
     end
+
+    def test_legacy_regex
+      assert_equal true, @ctx.eval_string('/]/.test("[hello]")')
+    end
   end
 end
