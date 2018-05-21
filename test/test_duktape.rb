@@ -690,27 +690,24 @@ class TestDuktape < Minitest::Spec
     def test_babel
       assert source = File.read(File.expand_path("../fixtures/babel.js", __FILE__))
 
-      ctx = Duktape::Context.new
-      ctx.exec_string(source, "(execjs)")
-      assert_equal 64, ctx.call_prop(["babel", "eval"], "((x) => x * x)(8)")
+      @ctx.exec_string(source, "(execjs)")
+      assert_equal 64, @ctx.call_prop(["babel", "eval"], "((x) => x * x)(8)")
     end
 
     def test_coffee_script
       assert source = File.read(File.expand_path("../fixtures/coffee-script.js", __FILE__))
 
-      ctx = Duktape::Context.new
-      ctx.exec_string(source, "(execjs)")
-      assert_equal 64, ctx.call_prop(["CoffeeScript", "eval"], "((x) -> x * x)(8)")
+      @ctx.exec_string(source, "(execjs)")
+      assert_equal 64, @ctx.call_prop(["CoffeeScript", "eval"], "((x) -> x * x)(8)")
     end
 
     def test_uglify
       assert source = File.read(File.expand_path("../fixtures/uglify.js", __FILE__))
 
-      ctx = Duktape::Context.new
-      ctx.exec_string(source, "(execjs)")
+      @ctx.exec_string(source, "(execjs)")
 
       assert_equal "function foo(bar){return bar}",
-        ctx.call_prop(["uglify"], "function foo(bar) {\n  return bar;\n}")
+        @ctx.call_prop(["uglify"], "function foo(bar) {\n  return bar;\n}")
     end
 
     def test_legacy_regex
