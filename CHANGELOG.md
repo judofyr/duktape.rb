@@ -1,6 +1,6 @@
 # ChangeLog
 
-## master
+## v2.0.1.0 (2018-05-21)
 
 * Upgrade to Duktape v2.0.1
 
