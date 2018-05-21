@@ -488,8 +488,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
   check_fatal(state);
 
   VALUE prop;
-  VALUE *prop_args;
-  rb_scan_args(argc, argv, "1*", &prop, &prop_args);
+  rb_scan_args(argc, argv, "1*", &prop, NULL);
 
   ctx_get_nested_prop(state, prop);
 
