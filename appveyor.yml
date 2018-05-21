@@ -11,11 +11,9 @@ install:
   - bundler --version
   - bundle install
 build_script:
-  - rake native gem
+  - rake compile
 test_script:
   - rake test
-artifacts:
-  - path: pkg\*.gem
 
 environment:
   matrix:
