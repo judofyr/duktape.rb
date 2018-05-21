@@ -43,7 +43,7 @@ struct state {
   VALUE blocks;
 };
 
-static void error_handler(struct state *, const char *);
+static void error_handler(void *, const char *);
 static void check_fatal(struct state *);
 
 static void ctx_dealloc(void *ptr)
@@ -617,8 +617,10 @@ static VALUE ctx_invoke_fatal(VALUE self)
   return Qnil;
 }
 
-static void error_handler(struct state *state, const char *msg)
+static void error_handler(void *udata, const char *msg)
 {
+  struct state *state = (struct state *)udata;
+
   if (msg == NULL) {
     msg = "fatal error";
   }
