@@ -27,7 +27,6 @@ static rb_encoding *utf16enc;
 static VALUE sDefaultFilename;
 static ID id_complex_object;
 
-static void error_handler(duk_context *, const char *);
 static int ctx_push_hash_element(VALUE key, VALUE val, VALUE extra);
 
 static unsigned long
@@ -38,10 +37,14 @@ utf8_to_uv(const char *p, long *lenp);
 
 struct state {
   duk_context *ctx;
+  int is_fatal;
   VALUE complex_object;
   int was_complex;
   VALUE blocks;
 };
+
+static void error_handler(struct state *, const char *);
+static void check_fatal(struct state *);
 
 static void ctx_dealloc(void *ptr)
 {
@@ -63,6 +66,7 @@ static VALUE ctx_alloc(VALUE klass)
   duk_context *ctx = duk_create_heap(NULL, NULL, NULL, state, error_handler);
 
   state->ctx = ctx;
+  state->is_fatal = 0;
   state->complex_object = oComplexObject;
   state->blocks = rb_ary_new();
 
@@ -316,6 +320,7 @@ static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
 
   VALUE source;
   VALUE filename;
@@ -360,6 +365,7 @@ static VALUE ctx_exec_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
 
   VALUE source;
   VALUE filename;
@@ -453,6 +459,7 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
 
   ctx_get_nested_prop(state, prop);
 
@@ -478,6 +485,7 @@ static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 {
   struct state *state;
   Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
 
   VALUE prop;
   VALUE *prop_args;
@@ -552,6 +560,8 @@ static VALUE ctx_define_function(VALUE self, VALUE prop)
 
   // get the context
   Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
+
   ctx = state->ctx;
 
   // the c function is available in the global scope
@@ -593,9 +603,35 @@ static VALUE ctx_is_valid(VALUE self)
   }
 }
 
-static void error_handler(duk_context *ctx, const char *msg)
+/*
+ * :nodoc:
+ *
+ * Invokes duk_fatal(). Only used for testing.
+ */
+static VALUE ctx_invoke_fatal(VALUE self)
 {
-  clean_raise(ctx, eInternalError, "%s", msg);
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
+
+  duk_fatal(state->ctx, "induced fatal error");
+
+  return Qnil;
+}
+
+static void error_handler(struct state *state, const char *msg)
+{
+  if (msg == NULL) {
+    msg = "fatal error";
+  }
+  state->is_fatal = 1;
+  rb_raise(eInternalError, "%s", msg);
+}
+
+static void check_fatal(struct state *state)
+{
+  if (state->is_fatal) {
+    rb_raise(eInternalError, "fatal error");
+  }
 }
 
 VALUE complex_object_instance(VALUE self)
@@ -683,6 +719,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
   rb_define_method(cContext, "define_function", ctx_define_function, 1);
   rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
+  rb_define_method(cContext, "_invoke_fatal", ctx_invoke_fatal, 0);
 
   oComplexObject = rb_obj_alloc(cComplexObject);
   rb_define_singleton_method(cComplexObject, "instance", complex_object_instance, 0);

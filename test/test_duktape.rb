@@ -8,6 +8,7 @@ require 'duktape'
 class TestDuktape < Minitest::Spec
   def setup
     @ctx = Duktape::Context.new(options)
+    @require_valid = true
   end
 
   def options
@@ -15,7 +16,9 @@ class TestDuktape < Minitest::Spec
   end
 
   def teardown
-    assert @ctx._valid?, "Context is in a weird state"
+    if @require_valid
+      assert @ctx._valid?, "Context is in a weird state"
+    end
   end
 
   def test_initialize
@@ -629,6 +632,22 @@ class TestDuktape < Minitest::Spec
     def test_exports_undefined
       assert_equal 'undefined',
         @ctx.eval_string('typeof exports')
+    end
+  end
+
+  describe "fatal handler" do
+    def test_invoke_fatal
+      @require_valid = false
+
+      @ctx.define_function("fatal") { @ctx._invoke_fatal }
+
+      assert_raises(Duktape::InternalError) do
+        @ctx.exec_string("fatal()")
+      end
+
+      assert_raises(Duktape::InternalError) do
+        @ctx.exec_string("1 + 1")
+      end
     end
   end
 
