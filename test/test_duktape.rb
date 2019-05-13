@@ -230,6 +230,7 @@ class TestDuktape < Minitest::Spec
 
     def test_fixnum
       assert_equal 2.0, @ctx.call_prop('id', 2)
+      assert_equal 1507843033737.0, @ctx.call_prop('id', 1507843033737)
     end
 
     def test_float

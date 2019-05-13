@@ -220,7 +220,7 @@ static void ctx_push_ruby_object(struct state *state, VALUE obj)
 
   switch (TYPE(obj)) {
     case T_FIXNUM:
-      duk_push_int(ctx, NUM2INT(obj));
+      duk_push_number(ctx, NUM2LONG(obj));
       return;
 
     case T_FLOAT:
