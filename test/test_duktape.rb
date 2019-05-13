@@ -237,6 +237,10 @@ class TestDuktape < Minitest::Spec
       assert_equal 2.0, @ctx.call_prop('id', 2.0)
     end
 
+    def test_bignum
+      assert_equal 2**100, @ctx.call_prop('id', 2**100)
+    end
+
     def test_true
       assert_equal true, @ctx.call_prop('id', true)
     end

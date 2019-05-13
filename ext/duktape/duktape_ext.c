@@ -227,6 +227,10 @@ static void ctx_push_ruby_object(struct state *state, VALUE obj)
       duk_push_number(ctx, NUM2DBL(obj));
       return;
 
+    case T_BIGNUM:
+      duk_push_number(ctx, NUM2DBL(obj));
+      return;
+
     case T_SYMBOL:
 #ifdef HAVE_RB_SYM2STR
       obj = rb_sym2str(obj);
