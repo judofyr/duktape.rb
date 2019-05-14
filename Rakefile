@@ -7,14 +7,36 @@ require 'sdoc'
 $gemspec = Gem::Specification.load('duktape.gemspec')
 
 DUKTAPE_VERSION = Duktape::VERSION.split('.')[0,3].join('.')
-task :update_duktape do
-  url = "http://duktape.org/duktape-#{DUKTAPE_VERSION}.tar.xz"
-  mkdir_p "tmp"
+
+duktape_name = "duktape-#{DUKTAPE_VERSION}"
+archive_name = "#{duktape_name}.tar.xz"
+archive_url = "https://duktape.org/#{archive_name}"
+archive_path = "tmp/#{archive_name}"
+duktape_path = "tmp/#{duktape_name}"
+duktape_build_path = "tmp/#{duktape_name}/build"
+
+directory "tmp"
+
+file archive_path => "tmp" do
   chdir "tmp" do
-    sh "curl", "-O", url
-    sh "tar", "xf", "duktape-#{DUKTAPE_VERSION}.tar.xz"
-    cp FileList["duktape-#{DUKTAPE_VERSION}/src/duktape*"], '../ext/duktape'
+    sh "curl", "-O", archive_url
   end
+end
+
+file duktape_path => archive_path do
+  chdir "tmp" do
+    sh "tar", "xf", archive_name
+  end
+end
+
+file duktape_build_path => duktape_path do
+  chdir duktape_path do
+    sh "python2", "tools/configure.py", "--output-directory", "build"
+  end
+end
+
+task :update_duktape => duktape_build_path do
+  cp FileList[duktape_build_path + "/*.{h,c}"], 'ext/duktape'
 end
 
 Rake::ExtensionTask.new do |ext|
