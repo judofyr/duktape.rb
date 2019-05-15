@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v2.3.0.0 (2019-05-15)
+
+* Upgrade to Duktape v2.3.0
+
 ## v2.0.1.1 (2019-05-13)
 
 * Support passing big numbers (64-bit + bignum) to JS (#43, did, judofyr)
