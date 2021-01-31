@@ -7,7 +7,7 @@ require 'duktape'
 
 class TestDuktape < Minitest::Spec
   def setup
-    @ctx = Duktape::Context.new(options)
+    @ctx = Duktape::Context.new(**options)
     @require_valid = true
   end
 
