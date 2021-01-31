@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v2.6.0.0 (2021-01-31)
+
+* Upgrade to Duktape v2.6.0
+
 ## v2.3.0.0 (2019-05-15)
 
 * Upgrade to Duktape v2.3.0

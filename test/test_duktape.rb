@@ -102,7 +102,7 @@ class TestDuktape < Minitest::Spec
         @ctx.eval_string('{')
       end
 
-      assert_equal "parse error (line 1)", err.message
+      assert_equal "parse error (line 1, end of input)", err.message
     end
 
     def test_type_error
@@ -160,7 +160,7 @@ class TestDuktape < Minitest::Spec
         @ctx.exec_string('{')
       end
 
-      assert_equal "parse error (line 1)", err.message
+      assert_equal "parse error (line 1, end of input)", err.message
     end
 
     def test_type_error
