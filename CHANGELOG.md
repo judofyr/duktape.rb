@@ -1,6 +1,6 @@
 # ChangeLog
 
-## v2.7.0.0 (2023-??)
+## v2.7.0.0 (2023-02-12)
 
 * Upgrade to Duktape v2.7.0
 
