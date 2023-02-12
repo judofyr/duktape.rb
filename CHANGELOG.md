@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v2.7.0.0 (2023-??)
+
+* Upgrade to Duktape v2.7.0
+
 ## v2.6.0.0 (2021-01-31)
 
 * Upgrade to Duktape v2.6.0
@@ -74,4 +78,3 @@
 * Upgraded Duktape to version 2.0.1
 * ContextError now includes the error message from Duktape
 * README and CHANGELOG is now included in gem
-
