@@ -19,7 +19,7 @@ require 'duktape'
 ctx = Duktape::Context.new
 
 ## Evaluate a string
-p ctx.eval_string('1 + 1')  # => 2
+p ctx.eval_string('1 + 1')  # => 2.0
 ```
 
 ### Contexts
