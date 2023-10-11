@@ -475,6 +475,52 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
 
 /*
  * call-seq:
+ *   call_iife(function, params,...) -> obj
+ *
+ * Call an IIFE passed in as a string
+ *
+ *     ctx.call("(function(a) { return 'Hello ' + a })", "world")     #=> Hello world
+ *
+ */
+static VALUE ctx_call_iife(int argc, VALUE* argv, VALUE self)
+{
+  struct state *state;
+  Data_Get_Struct(self, struct state, state);
+  check_fatal(state);
+
+  VALUE function_source;
+  rb_scan_args(argc, argv, "1*", &function_source, NULL);
+
+  if(TYPE(function_source) != T_STRING) {
+    clean_raise(state->ctx, rb_eTypeError, "wrong argument type %s (expected String)", rb_obj_classname(function_source));
+  }
+
+  StringValue(function_source);
+
+  ctx_push_ruby_object(state, function_source);
+  if(duk_peval(state->ctx) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
+  }
+
+  // Use the global object as 'this'
+  duk_push_global_object(state->ctx);
+
+  // Push arguments
+  for (int i = 1; i < argc; i++) {
+    ctx_push_ruby_object(state, argv[i]);
+  }
+
+  if (duk_pcall_method(state->ctx, (argc - 1)) == DUK_EXEC_ERROR) {
+    raise_ctx_error(state);
+  }
+
+  VALUE res = ctx_stack_to_value(state, -1);
+  duk_set_top(state->ctx, 0);
+  return res;
+}
+
+/*
+ * call-seq:
  *   call_prop(name, params,...) -> obj
  *   call_prop([names,...], params,...) -> obj
  *
@@ -722,6 +768,7 @@ void Init_duktape_ext()
   rb_define_method(cContext, "exec_string", ctx_exec_string, -1);
   rb_define_method(cContext, "get_prop", ctx_get_prop, 1);
   rb_define_method(cContext, "call_prop", ctx_call_prop, -1);
+  rb_define_method(cContext, "call_iife", ctx_call_iife, -1);
   rb_define_method(cContext, "define_function", ctx_define_function, 1);
   rb_define_method(cContext, "_valid?", ctx_is_valid, 0);
   rb_define_method(cContext, "_invoke_fatal", ctx_invoke_fatal, 0);

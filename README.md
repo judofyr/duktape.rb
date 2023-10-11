@@ -42,6 +42,14 @@ JS
 ctx.call_prop('process', 'some data', a: 1, b: 2)
 ```
 
+You can also call IIFEs:
+
+``` ruby
+ctx = Duktape::Context.new
+
+ctx.call_prop('(function process(str, options) { /* ... */ })', 'some data', a: 1, b: 2)
+```
+
 ### Call APIs
 
 * `exec_string` - Evaluate a JavaScript String on the context and return `nil`.
@@ -51,6 +59,8 @@ ctx.call_prop('process', 'some data', a: 1, b: 2)
                   as a Ruby Object.
 - `call_prop`   - Call a defined function with the given parameters and return
                   the value as a Ruby Object.
+- `call_iife`   - Call an IIFE (Immediately Invoked Function Expression) and
+                  return the value as a Ruby Object.
 
 ### Defining functions
 
