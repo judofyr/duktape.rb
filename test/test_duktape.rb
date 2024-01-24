@@ -378,6 +378,34 @@ class TestDuktape < Minitest::Spec
     end
   end
 
+  describe "#call_iife" do
+    def test_iife
+      assert_equal 'Hello world', @ctx.call_iife('(function(a) { return "Hello " + a })', 'world')
+    end
+
+    def test_syntax_error
+      assert_raises(Duktape::SyntaxError) do
+        @ctx.call_iife('(')
+      end
+    end
+
+    def test_not_a_function
+      assert_raises(Duktape::TypeError) do
+        @ctx.call_iife('123')
+      end
+    end
+
+    def test_invalid_argument
+      assert_raises(TypeError) do
+        @ctx.call_iife(123)
+      end
+
+      assert_raises(TypeError) do
+        @ctx.call_iife(nil)
+      end
+    end
+  end
+
   describe "#define_function" do
     def test_require_name
       err = assert_raises(ArgumentError) do
