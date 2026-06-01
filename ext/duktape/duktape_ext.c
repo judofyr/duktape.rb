@@ -53,17 +53,38 @@ static void ctx_dealloc(void *ptr)
   xfree(state);
 }
 
-static void ctx_mark(struct state *state)
+static void ctx_mark(void *ptr)
 {
+  struct state *state = (struct state *)ptr;
   rb_gc_mark(state->complex_object);
   rb_gc_mark(state->blocks);
+}
+
+static size_t ctx_memsize(const void *ptr)
+{
+  return ptr ? sizeof(struct state) : 0;
+}
+
+static const rb_data_type_t ctx_data_type = {
+  "Duktape::Context",
+  {ctx_mark, ctx_dealloc, ctx_memsize,},
+  0, 0, 0,
+};
+
+static struct state *ctx_read(VALUE self)
+{
+  struct state *state;
+
+  TypedData_Get_Struct(self, struct state, &ctx_data_type, state);
+
+  return state;
 }
 
 static VALUE ctx_alloc(VALUE klass)
 {
   struct state *state;
-  VALUE obj = Data_Make_Struct(klass, struct state, ctx_mark, ctx_dealloc,
-                               state);
+  VALUE obj = TypedData_Make_Struct(klass, struct state, &ctx_data_type,
+                                    state);
 
   duk_context *ctx = duk_create_heap(NULL, NULL, NULL, state, error_handler);
 
@@ -325,7 +346,7 @@ static void raise_ctx_error(struct state *state)
 static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
   check_fatal(state);
 
   VALUE source;
@@ -370,7 +391,7 @@ static VALUE ctx_eval_string(int argc, VALUE *argv, VALUE self)
 static VALUE ctx_exec_string(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
   check_fatal(state);
 
   VALUE source;
@@ -464,7 +485,7 @@ static void ctx_get_nested_prop(struct state *state, VALUE props)
 static VALUE ctx_get_prop(VALUE self, VALUE prop)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
   check_fatal(state);
 
   ctx_get_nested_prop(state, prop);
@@ -490,7 +511,7 @@ static VALUE ctx_get_prop(VALUE self, VALUE prop)
 static VALUE ctx_call_prop(int argc, VALUE* argv, VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
   check_fatal(state);
 
   VALUE prop;
@@ -564,7 +585,7 @@ static VALUE ctx_define_function(VALUE self, VALUE prop)
     rb_raise(rb_eArgError, "Expected block");
 
   // get the context
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
   check_fatal(state);
 
   ctx = state->ctx;
@@ -599,7 +620,7 @@ static VALUE ctx_define_function(VALUE self, VALUE prop)
 static VALUE ctx_is_valid(VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
 
   if (duk_is_valid_index(state->ctx, -1)) {
     return Qfalse;
@@ -616,7 +637,7 @@ static VALUE ctx_is_valid(VALUE self)
 static VALUE ctx_invoke_fatal(VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
 
   duk_fatal(state->ctx, "induced fatal error");
 
@@ -657,7 +678,7 @@ VALUE complex_object_instance(VALUE self)
 static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
 
   VALUE options;
   rb_scan_args(argc, argv, ":", &options);
@@ -681,7 +702,7 @@ static VALUE ctx_initialize(int argc, VALUE *argv, VALUE self)
 static VALUE ctx_complex_object(VALUE self)
 {
   struct state *state;
-  Data_Get_Struct(self, struct state, state);
+  state = ctx_read(self);
 
   return state->complex_object;
 }
