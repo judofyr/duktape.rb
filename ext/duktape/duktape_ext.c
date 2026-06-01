@@ -50,7 +50,7 @@ static void ctx_dealloc(void *ptr)
 {
   struct state *state = (struct state *)ptr;
   duk_destroy_heap(state->ctx);
-  free(state);
+  xfree(state);
 }
 
 static void ctx_mark(struct state *state)
@@ -61,7 +61,9 @@ static void ctx_mark(struct state *state)
 
 static VALUE ctx_alloc(VALUE klass)
 {
-  struct state *state = malloc(sizeof(struct state));
+  struct state *state;
+  VALUE obj = Data_Make_Struct(klass, struct state, ctx_mark, ctx_dealloc,
+                               state);
 
   duk_context *ctx = duk_create_heap(NULL, NULL, NULL, state, error_handler);
 
@@ -76,7 +78,7 @@ static VALUE ctx_alloc(VALUE klass)
   duk_del_prop(ctx, -2);
   duk_set_top(ctx, 0);
 
-  return Data_Wrap_Struct(klass, ctx_mark, ctx_dealloc, state);
+  return obj;
 }
 
 static VALUE error_name_class(const char* name)
